@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
 @MapperScan({"com.joyfishs.**.mapper"})
-@ComponentScan({"com.joyfishs.**.controller", "com.joyfishs.**.service", "com.joyfishs.system"})
+@ComponentScan({"com.joyfishs"})
 public class EduApplication {
     public static void main(String[] args) {
         SpringApplication.run(EduApplication.class, args);

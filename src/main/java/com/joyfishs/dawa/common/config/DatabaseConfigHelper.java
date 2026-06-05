@@ -1,5 +1,6 @@
 package com.joyfishs.dawa.common.config;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -10,8 +11,11 @@ import java.util.Map;
  * 数据库配置帮助类
  * 支持MySQL与DM8双环境配置切换
  *
+ * 仅在 dm profile 下加载
+ *
  * @author native-adaptation
  */
+@Profile("dm")
 @Component
 public class DatabaseConfigHelper {
 

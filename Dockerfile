@@ -6,8 +6,10 @@ WORKDIR /workspace
 COPY pom.xml .
 COPY lib ./lib
 COPY src ./src
+COPY .mvn-settings.xml /tmp/mvn-settings.xml
 ARG BUILD_PROFILE=prod
-RUN --mount=type=cache,target=/root/.m2 mvn -B -P"${BUILD_PROFILE}" -DskipTests -e clean package
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn -B -P"${BUILD_PROFILE}" -DskipTests -e -gs /tmp/mvn-settings.xml clean package
 
 FROM eclipse-temurin:17-jre
 ENV TZ=Asia/Shanghai

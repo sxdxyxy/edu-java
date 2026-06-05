@@ -1,11 +1,15 @@
 package com.joyfishs.dawa.common.config;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -16,8 +20,12 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * Redis 国产化配置
  * 支持国产化Redis集群配置
  *
+ * 仅在 SPRING_PROFILES_ACTIVE 包含 dm 时加载
+ * 部署: java -Dspring.profiles.active=prod,dm -jar safe-edu.jar
+ *
  * @author native-adaptation
  */
+@Profile("dm")
 @Configuration
 public class NativeRedisConfig {
 
@@ -36,8 +44,15 @@ public class NativeRedisConfig {
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         objectMapper.setVisibility(objectMapper.getSerializationConfig().getDefaultVisibilityChecker()
             .withFieldVisibility(JsonAutoDetect.Visibility.ANY));
-        
-        GenericJackson2JsonRedisSerializer jsonSerializer = 
+
+        // 启用 default typing:序列化时带 @class 字段,反序列化时按类型还原
+        // 不启用会导致 LoginUser 还原为 LinkedHashMap,后续 .cast(LoginUser) 抛 ClassCastException
+        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+            .allowIfBaseType(Object.class)
+            .build();
+        objectMapper.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+
+        GenericJackson2JsonRedisSerializer jsonSerializer =
             new GenericJackson2JsonRedisSerializer(objectMapper);
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
         
