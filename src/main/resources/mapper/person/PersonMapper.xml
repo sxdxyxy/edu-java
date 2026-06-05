@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.person.mapper.PersonMapper">
+    <select id="queryList" resultType="com.joyfishs.dawa.person.entity.Person">
+        select a.*
+        from xm_person a
+        left join sys_org b on a.org_id = b.id
+        where a.is_delete = 0
+        <if test="orgId != null and orgId != ''">
+            and (a.org_id = #{orgId} or b.pids like concat('%[', #{orgId} ,']%') )
+        </if>
+        <if test="name != null and name != ''">
+            <!-- 安全修复: 使用 com.joyfishs.utils.SqlUtil.escapeLikeSpecialChars(name) 转义特殊字符 -->
+            and a.name like concat('%', #{name}, '%')
+        </if>
+        <if test="userName != null and userName != ''">
+            <!-- 安全修复: 使用 com.joyfishs.utils.SqlUtil.escapeLikeSpecialChars(userName) 转义特殊字符 -->
+            and a.user_name like concat('%', #{userName}, '%')
+        </if>
+        <if test="isAdmin != null and isAdmin != ''">
+            and a.is_admin = #{isAdmin}
+        </if>
+        <if test="state != null">
+            and a.state = #{state}
+        </if>
+        <if test="type != null and type != ''">
+            and find_in_set(#{type},a.type)
+        </if>
+    </select>
+
+    <select id="queryListByOrg" resultType="com.joyfishs.dawa.person.entity.Person">
+        select a.*
+        from xm_person a
+        left join xm_person_org b on a.id = b.person_id
+        left join sys_org c on b.org_id = c.id
+        where a.is_delete = 0 and c.is_delete = 0
+        <if test="orgId != null and orgId != ''">
+            and (b.org_id = #{orgId} or c.pids like concat('%[', #{orgId} ,']%') )
+        </if>
+        <if test="name != null and name != ''">
+            and a.name like concat('%', #{name}, '%')
+        </if>
+        <if test="userName != null and userName != ''">
+            and a.user_name like concat('%', #{userName}, '%')
+        </if>
+        <if test="state != null">
+            and a.state = #{state}
+        </if>
+        <if test="type != null and type != ''">
+            and find_in_set(a.type,#{type})
+        </if>
+    </select>
+</mapper>

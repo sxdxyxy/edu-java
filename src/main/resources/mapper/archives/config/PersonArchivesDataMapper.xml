@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.archives.config.mapper.PersonArchivesDataMapper">
+
+    <resultMap id="BaseResultMap" type="com.joyfishs.dawa.archives.config.entity.PersonArchivesData">
+        <id column="id" property="id"/>
+        <result column="config_id" property="configId"/>
+        <result column="person_id" property="personId"/>
+        <result column="user_id" property="userId"/>
+        <result column="work_type" property="workType"/>
+        <result column="org_id" property="orgId"/>
+        <result column="project_id" property="projectId"/>
+        <result column="team_name" property="teamName"/>
+        <result column="archive_data" property="archiveData"/>
+        <result column="generated_doc_url" property="generatedDocUrl"/>
+        <result column="archive_number" property="archiveNumber"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <!-- 扩展字段 -->
+        <result column="person_name" property="personName"/>
+        <result column="safety_color" property="safetyColor"/>
+        <result column="safety_status" property="safetyStatus"/>
+    </resultMap>
+
+    <select id="selectByPersonIdAndWorkType" resultMap="BaseResultMap">
+        SELECT * FROM person_archives_data
+        WHERE person_id = #{personId}
+          AND work_type = #{workType}
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByConfigId" resultMap="BaseResultMap">
+        SELECT * FROM person_archives_data
+        WHERE config_id = #{configId}
+          AND is_delete = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="selectListData" resultType="com.joyfishs.dawa.archives.config.entity.PersonArchivesData">
+        SELECT 
+            d.id,
+            d.config_id as configId,
+            d.person_id as personId,
+            d.user_id as userId,
+            d.work_type as workType,
+            d.org_id as orgId,
+            d.project_id as projectId,
+            d.team_name as teamName,
+            d.archive_data as archiveData,
+            d.generated_doc_url as generatedDocUrl,
+            d.archive_number as archiveNumber,
+            d.status,
+            d.created_at as createdAt,
+            d.updated_at as updatedAt,
+            p.name as personName,
+            s.color as safetyColor,
+            s.status as safetyStatus
+        FROM person_archives_data d
+        LEFT JOIN xm_person p ON d.person_id = p.id
+        LEFT JOIN safety_codes s ON p.user_id = s.user_id
+        <where>
+            d.is_delete = 0
+            <if test="configId != null">
+                AND d.config_id = #{configId}
+            </if>
+            <if test="personId != null">
+                AND d.person_id = #{personId}
+            </if>
+            <if test="archiveNumber != null and archiveNumber != ''">
+                AND d.archive_number LIKE CONCAT('%', #{archiveNumber}, '%')
+            </if>
+        </where>
+        ORDER BY d.created_at DESC
+    </select>
+
+</mapper>

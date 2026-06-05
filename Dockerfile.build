@@ -1,0 +1,15 @@
+FROM maven:3.8-openjdk-8-slim AS builder
+
+WORKDIR /app
+
+# 复制 pom.xml
+COPY pom.xml .
+
+# 复制本地依赖库
+COPY lib ./lib
+
+# 复制源代码
+COPY src ./src
+
+# 执行构建 (不再使用 go-offline，直接进行 package)
+RUN mvn clean package -DskipTests -e

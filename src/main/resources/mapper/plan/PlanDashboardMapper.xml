@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.plan.mapper.PlanDashboardMapper">
+
+    <select id="selectProjectSummaries" resultType="com.joyfishs.dawa.plan.dto.ProjectSummaryDTO">
+        SELECT
+            pj.id AS projectId,
+            pj.project_name AS projectName,
+            pj.project_status AS status,
+            COUNT(DISTINCT pcr.person_id) AS studentCount,
+            SUM(CASE WHEN pcr.is_sign = 3 THEN 1 ELSE 0 END) AS completedCount
+        FROM xm_project pj
+        LEFT JOIN xm_person_course_relate pcr ON pj.id = pcr.project_id AND pcr.is_delete = 0
+        WHERE pj.train_plan_id = #{planId} AND pj.is_delete = 0
+        GROUP BY pj.id
+    </select>
+
+    <select id="selectTotalStudents" resultType="long">
+        SELECT COUNT(DISTINCT pcr.person_id)
+        FROM xm_person_course_relate pcr
+        JOIN xm_project pj ON pcr.project_id = pj.id
+        WHERE pj.train_plan_id = #{planId} AND pj.is_delete = 0 AND pcr.is_delete = 0
+    </select>
+
+    <select id="selectCompletionStats" resultType="com.joyfishs.dawa.plan.dto.CompletionStatsDTO">
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN pcr.is_sign = 3 THEN 1 ELSE 0 END) AS completed
+        FROM xm_person_course_relate pcr
+        JOIN xm_project pj ON pcr.project_id = pj.id
+        WHERE pj.train_plan_id = #{planId} AND pj.is_delete = 0 AND pcr.is_delete = 0
+    </select>
+
+    <select id="selectOverduePersons" resultType="com.joyfishs.dawa.plan.dto.OverduePersonDTO">
+        SELECT
+            pcr.person_id AS personId,
+            p.name AS personName,
+            pj.project_name AS projectName,
+            DATEDIFF(NOW(), pj.exam_edate) AS overdueDays,
+            ROUND(pcr.learn_hours / pj.total_learn_hours * 100, 1) AS progress
+        FROM xm_person_course_relate pcr
+        JOIN xm_project pj ON pcr.project_id = pj.id
+        JOIN xm_person p ON pcr.person_id = p.id
+        WHERE pj.train_plan_id = #{planId}
+          AND pcr.is_sign != 3
+          AND pj.exam_edate IS NOT NULL
+          AND pj.exam_edate &lt; NOW()
+          AND pj.is_delete = 0
+          AND pcr.is_delete = 0
+        ORDER BY overdueDays DESC
+    </select>
+
+    <select id="selectStartingSoon" resultType="com.joyfishs.dawa.plan.dto.StartingSoonDTO">
+        SELECT
+            pj.id AS projectId,
+            pj.project_name AS projectName,
+            pj.train_sdate AS startDate
+        FROM xm_project pj
+        WHERE pj.train_plan_id = #{planId}
+          AND pj.project_status = 2
+          AND pj.train_sdate IS NOT NULL
+          AND pj.train_sdate BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL #{daysAhead} DAY)
+          AND pj.is_delete = 0
+        ORDER BY pj.train_sdate
+    </select>
+
+    <select id="selectProgressLagging" resultType="com.joyfishs.dawa.plan.dto.ProgressLaggingDTO">
+        SELECT
+            pcr.person_id AS personId,
+            p.name AS personName,
+            pj.project_name AS projectName,
+            pj.exam_edate AS deadline
+        FROM xm_person_course_relate pcr
+        JOIN xm_project pj ON pcr.project_id = pj.id
+        JOIN xm_person p ON pcr.person_id = p.id
+        WHERE pj.train_plan_id = #{planId}
+          AND pcr.is_sign = 2
+          AND pj.exam_edate IS NOT NULL
+          AND pj.exam_edate BETWEEN DATE_SUB(NOW(), INTERVAL 7 DAY) AND NOW()
+          AND pj.is_delete = 0
+          AND pcr.is_delete = 0
+        ORDER BY pj.exam_edate
+    </select>
+
+</mapper>

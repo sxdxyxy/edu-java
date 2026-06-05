@@ -1,0 +1,34 @@
+server:
+  port: 8000
+  servlet:
+    context-path: /api
+token:
+  header: Authorization
+  secret: ${TOKEN_SECRET_PROD}
+  expireTime: 1800000
+knife4j:
+  enable: true
+  setting:
+    enable-host: true
+    enable-host-text: "https://sts.joyfishs.com/api/"
+logging:
+  level:
+    com.joyfishs: info
+    org.springframework: info
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/safe_train?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=UTF-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: safe_train
+    password: ${DB_PASSWORD_PROD}
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    password: ${REDIS_PASSWORD_PROD}
+    timeout: 10s
+    lettuce:
+      pool:
+        min-idle: 0
+        max-idle: 8
+        max-active: 8
+        max-wait: -1ms

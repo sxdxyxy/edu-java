@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.course.mapper.CourseQuestionMapper">
+
+    <select id="questionList" resultType="com.joyfishs.dawa.course.entity.CourseQuestion">
+        SELECT 
+            q.id, 
+            q.question_name, 
+            q.question_type, 
+            q.is_delete, 
+            q.course_id,
+            q.create_time,
+            c.course_name as course_name
+        FROM xm_course_question q
+        LEFT JOIN xm_course c ON q.course_id = c.id
+        <where>
+            q.is_delete = 0
+            <if test="t.courseId != null">
+                AND q.course_id = #{t.courseId}
+            </if>
+            <if test="t.questionName != null and t.questionName != ''">
+                AND q.question_name LIKE concat('%', #{t.questionName}, '%')
+            </if>
+            <if test="t.questionType != null">
+                AND q.question_type = #{t.questionType}
+            </if>
+        </where>
+    </select>
+
+    <select id="getQuestionNumByCourseIds" resultType="com.joyfishs.dawa.course.domain.vo.QuestionCountVo">
+            SELECT question_type AS i,
+            question_type AS topicType,
+            COUNT(1) AS totalNum
+            FROM xm_course_question a
+            WHERE course_id IN
+            <foreach item='item' collection='list' separator=',' open='(' close=')' index='index'>
+                #{item}
+            </foreach>
+            AND is_delete = 0
+            GROUP BY question_type;
+    </select>
+
+    <select id="findByQuestionByIdIN" resultType="com.joyfishs.dawa.answer.vo.QuestionVo">
+        select (@i:=@i+1) as orderNumber,
+        id as question_id, question_name, question_type,
+        answerA, answerB, answerC, answerD, answerE, answerF, right_answers
+        from xm_course_question, (select @i:=0) t
+        where is_delete = 0
+        <if test='questionAll == null or questionAll.size() == 0'>
+            and 1 = 0 <!--永远为假-->
+        </if>
+        <if test='questionAll != null and questionAll.size() > 0'>
+            and id in
+            <foreach item='item' collection='questionAll' separator=',' open='(' close=')' index='index'>
+                #{item}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="findGroupCount" resultType="com.joyfishs.dawa.project.entity.ProjectTestPaperTactics">
+        SELECT topic_type, IFNULL(topic_num, 0) AS topic_num, IFNULL(topic_score, 0) AS topic_score
+        FROM xm_project_test_paper_tactics
+        WHERE is_delete = 0
+          AND topic_num IS NOT NULL
+          AND topic_score IS NOT NULL
+          AND project_id = #{projectId}
+        GROUP BY topic_type
+    </select>
+
+    <select id="findByQuestionType" resultType="Long">
+            SELECT id FROM xm_course_question
+            WHERE is_delete = 0
+            <if test='questionType != null'>
+                AND question_type = #{questionType}
+            </if>
+            <if test='courseIds != null and courseIds.size() > 0'>
+                AND course_id IN
+                <foreach item='item' collection='courseIds' separator=',' open='(' close=')' index='index'>
+                    #{item}
+                </foreach>
+            </if>
+    </select>
+
+    <select id="findPracticeQuestion" resultType="com.joyfishs.dawa.answer.vo.QuestionVo">
+        SELECT id as question_id, question_name, question_type, answerA, answerB, answerC, answerD, answerE, answerF
+        FROM xm_course_question
+        WHERE is_delete = 0 AND course_id = #{courseId}
+        ORDER BY question_id
+    </select>
+
+    <select id="getQuestionVo" resultType="com.joyfishs.dawa.answer.vo.QuestionVo">
+        SELECT id as question_id, question_name, question_type,
+               answerA, answerB, answerC, answerD, answerE, answerF, right_answers
+        FROM xm_course_question
+        WHERE id = #{id}
+    </select>
+</mapper>

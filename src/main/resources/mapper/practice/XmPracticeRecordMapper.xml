@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.practice.mapper.XmPracticeRecordMapper">
+
+    <select id="findList" resultType="com.joyfishs.dawa.practice.entity.PracticeRecord">
+        SELECT a.id, a.person_id, a.project_id, a.course_id, a.report_id, a.practice_time, b.submit_time, b.total_questions, b.right_questions,
+               (SELECT course_name FROM xm_course WHERE id = a.course_id) AS course_name
+        FROM xm_practice_record a
+                 LEFT JOIN xm_answer_report b ON a.report_id = b.id
+        WHERE a.person_id = #{personId}
+          AND a.is_delete = 0
+          AND b.is_delete = 0
+        ORDER BY a.practice_time DESC
+    </select>
+
+    <select id="getByPersonAndCourseId" resultType="com.joyfishs.dawa.practice.entity.PracticeRecord">
+        select * from xm_practice_record where person_id = #{personId} and course_id = #{courseId} order by practice_time desc limit 1
+    </select>
+
+    <select id="findPracticeList" resultType="com.joyfishs.dawa.practice.vo.PracticeVo">
+            SELECT a.id AS course_id, a.course_name, a.course_type AS practice_type, d.name AS practice_type_name
+            FROM xm_course a
+            LEFT JOIN sys_data_dictionary_item d ON d.dictionary_code = '0006' AND d.value = a.course_type AND d.is_delete = 0
+            WHERE a.is_delete = 0
+            AND EXISTS (SELECT 1 FROM xm_course_question WHERE a.id = course_id AND is_delete = 0)
+            <if test='type != null and type != "" '>
+                AND a.course_type = #{type}
+            </if>
+            <if test='name != null and name != "" '>
+                AND a.course_name LIKE CONCAT('%', #{name}, '%')
+            </if>
+    </select>
+</mapper>

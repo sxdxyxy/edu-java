@@ -1,0 +1,24 @@
+master:
+  push:
+    - docker:
+        # 声明构建环境，可以在 dockerhub 上 https://hub.docker.com/_/maven 找到您需要maven和jdk版本
+        image: maven:3.8.6-openjdk-8
+        volumes:
+          # 声明式的构建缓存 https://docs.cnb.cool/grammar/pipeline.html#volumes
+          - /root/.m2:copy-on-write
+      #      services:
+      #        - docker
+      #      imports: https://cnb.cool/cmnt2/joyfishs/secrets/-/blob/main/springboot-maven-ssh-config.yml
+      stages:
+        - name: mvn package
+          script: |
+            # 合并 ./settings.xml 和 /root/.m2/settings.xml
+            mvn clean package -Dmaven.test.skip=true -s ./settings.xml
+            mvn deploy -s ./settings.xml
+        - name: docker build
+          script:
+            - docker build -t ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:${CNB_COMMIT} .
+        - name: docker push
+          script:
+            - docker push ${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:${CNB_COMMIT}
+

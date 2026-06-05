@@ -1,0 +1,350 @@
+package com.joyfishs.dawa.violation.controller;
+
+import com.github.pagehelper.PageInfo;
+import com.joyfishs.dawa.violation.entity.ViolationRecord;
+import com.joyfishs.dawa.violation.service.ViolationRecordService;
+import com.joyfishs.system.annotation.Log;
+import com.joyfishs.system.controller.BaseController;
+import com.joyfishs.system.domain.R;
+import com.joyfishs.system.enums.BusinessType;
+import com.joyfishs.utils.AjaxResult;
+import com.joyfishs.common.utils.ExcelUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletResponse;
+
+/**
+ * 违章记录控制器
+ * 
+ * @author safe-edu
+ * @since 2026-03-29
+ */
+@RestController
+@RequestMapping("/api/violation")
+public class ViolationRecordController extends BaseController {
+
+    @Autowired
+    private ViolationRecordService violationRecordService;
+
+    /**
+     * 查询用户的违章记录列表
+     */
+    @GetMapping("/user/{userId}")
+    public AjaxResult listByUser(@PathVariable Long userId) {
+        List<ViolationRecord> list = violationRecordService.listByUserId(userId);
+        Integer totalScore = violationRecordService.getTotalScore(userId);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("totalScore", totalScore);
+        return AjaxResult.success(result);
+    }
+
+    /**
+     * 查询项目的违章记录列表
+     */
+    @GetMapping("/project/{projectId}")
+    public AjaxResult listByProject(@PathVariable Long projectId) {
+        List<ViolationRecord> list = violationRecordService.listByProjectId(projectId);
+        return AjaxResult.success(list);
+    }
+
+    /**
+     * 查询待处理的违章记录
+     */
+    @GetMapping("/pending")
+    public AjaxResult listPending() {
+        List<ViolationRecord> list = violationRecordService.listPending();
+        return AjaxResult.success(list);
+    }
+
+    /**
+     * 查询严重违章记录
+     */
+    @GetMapping("/severe")
+    public AjaxResult listSevere() {
+        List<ViolationRecord> list = violationRecordService.listSevereViolations();
+        return AjaxResult.success(list);
+    }
+
+    /**
+     * 记录违章行为
+     */
+    @PostMapping("/record")
+    public AjaxResult addViolation(@RequestBody ViolationRecord violation) {
+        try {
+            ViolationRecord saved = violationRecordService.recordViolation(violation);
+            return AjaxResult.success("违章记录成功", saved);
+        } catch (Exception e) {
+            return AjaxResult.error("记录失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 处理违章记录
+     */
+    @PostMapping("/process/{violationId}")
+    public AjaxResult processViolation(
+            @PathVariable Long violationId,
+            @RequestParam Long handlerId,
+            @RequestParam String status) {
+        try {
+            ViolationRecord updated = violationRecordService.processViolation(violationId, handlerId, status);
+            return AjaxResult.success("处理成功", updated);
+        } catch (Exception e) {
+            return AjaxResult.error("处理失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 删除违章记录
+     */
+    @DeleteMapping("/{id}")
+    public AjaxResult deleteViolation(@PathVariable Long id) {
+        try {
+            violationRecordService.removeById(id);
+            return AjaxResult.success("违章记录删除成功");
+        } catch (Exception e) {
+            return AjaxResult.error("删除失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取违章记录详情
+     */
+    @GetMapping("/{id}")
+    public AjaxResult getViolationDetail(@PathVariable Long id) {
+        try {
+            ViolationRecord record = violationRecordService.getById(id);
+            if (record == null) {
+                return AjaxResult.error("违章记录不存在");
+            }
+            return AjaxResult.success(record);
+        } catch (Exception e) {
+            return AjaxResult.error("查询失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 分页查询所有违章记录
+     */
+    @GetMapping("/list")
+    public AjaxResult listPage(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        startPage();
+        List<ViolationRecord> list = violationRecordService.list();
+        PageInfo<ViolationRecord> pageInfo = new PageInfo<>(list);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("rows", pageInfo.getList());
+        result.put("total", pageInfo.getTotal());
+        return AjaxResult.success(result);
+    }
+
+    /**
+     * 批量删除违章记录
+     */
+    @PostMapping("/batch-delete")
+    @PreAuthorize("@ss.hasPermi('violation:delete')")
+    @Log(title = "违章记录", businessType = BusinessType.DELETE)
+    public AjaxResult batchDeleteViolations(@RequestBody List<Long> ids) {
+        try {
+            if (ids == null || ids.isEmpty()) {
+                return AjaxResult.error("请选择要删除的违章记录");
+            }
+            
+            boolean result = violationRecordService.batchDeleteViolations(ids);
+            if (result) {
+                return AjaxResult.success("违章记录批量删除成功", ids.size() + "条记录已被删除");
+            } else {
+                return AjaxResult.error("违章记录批量删除失败");
+            }
+        } catch (Exception e) {
+            return AjaxResult.error("批量删除失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 批量处理违章
+     */
+    @PostMapping("/batch-process")
+    @PreAuthorize("@ss.hasPermi('violation:process')")
+    @Log(title = "违章记录", businessType = BusinessType.UPDATE)
+    public AjaxResult batchProcessViolations(@RequestBody Map<String, Object> params) {
+        try {
+            List<Long> ids = (List<Long>) params.get("ids");
+            String status = (String) params.get("status");
+            Long handlerId = (Long) params.get("handlerId");
+            
+            if (ids == null || ids.isEmpty()) {
+                return AjaxResult.error("请选择要处理的违章记录");
+            }
+            
+            if (status == null || status.trim().isEmpty()) {
+                return AjaxResult.error("请指定处理状态");
+            }
+            
+            if (handlerId == null) {
+                return AjaxResult.error("请指定处理人");
+            }
+            
+            boolean result = violationRecordService.batchProcessViolations(ids, handlerId, status);
+            if (result) {
+                return AjaxResult.success("违章记录批量处理成功", ids.size() + "条记录已被处理");
+            } else {
+                return AjaxResult.error("违章记录批量处理失败");
+            }
+        } catch (Exception e) {
+            return AjaxResult.error("批量处理失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 导出违章记录为Excel
+     */
+    @GetMapping("/export")
+    @PreAuthorize("@ss.hasPermi('violation:export')")
+    @Log(title = "违章记录", businessType = BusinessType.EXPORT)
+    public void exportViolations(HttpServletResponse response) {
+        try {
+            List<ViolationRecord> violations = violationRecordService.list();
+            ExcelUtil.exportExcel(violations, response, "violation_records.xlsx");
+        } catch (Exception e) {
+            // 导出失败时的处理
+            System.err.println("导出违章记录失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 从Excel导入违章数据
+     */
+    @PostMapping("/import")
+    @PreAuthorize("@ss.hasPermi('violation:import')")
+    @Log(title = "违章记录", businessType = BusinessType.IMPORT)
+    public AjaxResult importViolations(MultipartFile file) {
+        try {
+            if (file == null || file.isEmpty()) {
+                return AjaxResult.error("请选择要上传的文件");
+            }
+            
+            // 验证文件类型
+            String fileName = file.getOriginalFilename();
+            if (fileName == null || !(fileName.endsWith(".xlsx") || fileName.endsWith(".xls"))) {
+                return AjaxResult.error("仅支持Excel文件格式(.xlsx或.xls)");
+            }
+            
+            InputStream inputStream = file.getInputStream();
+            List<ViolationRecord> violations = ExcelUtil.importExcel(inputStream, ViolationRecord.class);
+            
+            if (violations == null || violations.isEmpty()) {
+                return AjaxResult.error("Excel文件中没有有效的违章数据");
+            }
+            
+            List<ViolationRecord> result = violationRecordService.importViolations(violations);
+            return AjaxResult.success("违章记录导入成功", result.size() + "条记录已被导入");
+        } catch (Exception e) {
+            return AjaxResult.error("导入失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取违章统计概览
+     */
+    @GetMapping("/statistics/overview")
+    public AjaxResult getOverviewStatistics() {
+        try {
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalCount", violationRecordService.countAll());
+            stats.put("pendingCount", violationRecordService.listPending().size());
+            stats.put("processedCount", violationRecordService.countByStatus("processed"));
+            stats.put("appealedCount", violationRecordService.countByStatus("appealed"));
+            stats.put("minorCount", violationRecordService.countBySeverity("minor"));
+            stats.put("majorCount", violationRecordService.countBySeverity("major"));
+            stats.put("criticalCount", violationRecordService.countBySeverity("critical"));
+            return AjaxResult.success(stats);
+        } catch (Exception e) {
+            return AjaxResult.error("查询失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 更新违章记录
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("@ss.hasPermi('violation:edit')")
+    @Log(title = "违章记录", businessType = BusinessType.UPDATE)
+    public AjaxResult updateViolation(
+            @PathVariable Long id,
+            @RequestBody ViolationRecord violation) {
+        try {
+            ViolationRecord existing = violationRecordService.getById(id);
+            if (existing == null) {
+                return AjaxResult.error("违章记录不存在");
+            }
+            violation.setId(id);
+            ViolationRecord updated = violationRecordService.updateViolation(violation);
+            return AjaxResult.success("更新成功", updated);
+        } catch (Exception e) {
+            return AjaxResult.error("更新失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 查询用户的累计记分
+     */
+    @GetMapping("/user/{userId}/total-score")
+    public AjaxResult getTotalScore(@PathVariable Long userId) {
+        try {
+            Integer totalScore = violationRecordService.getTotalScore(userId);
+            Map<String, Object> result = new HashMap<>();
+            result.put("userId", userId);
+            result.put("totalScore", totalScore);
+            return AjaxResult.success(result);
+        } catch (Exception e) {
+            return AjaxResult.error("查询失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取违章记分排行榜 TOP10
+     */
+    @GetMapping("/top10")
+    public AjaxResult getTop10Violators(@RequestParam(required = false) Long orgId) {
+        try {
+            List<Map<String, Object>> top10 = violationRecordService.getTop10ViolatorsByScore(orgId);
+            return AjaxResult.success(top10);
+        } catch (Exception e) {
+            return AjaxResult.error("查询失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 导出违章记录为 Excel（带筛选条件）
+     */
+    @GetMapping("/export")
+    @PreAuthorize("@ss.hasPermi('violation:export')")
+    @Log(title = "违章记录", businessType = BusinessType.EXPORT)
+    public void exportViolations(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) String severity,
+            @RequestParam(required = false) String status,
+            HttpServletResponse response) {
+        try {
+            List<ViolationRecord> violations = violationRecordService.listPage(userId, projectId, severity, status);
+            ExcelUtil.exportExcel(violations, response, "违章记录_" + System.currentTimeMillis() + ".xlsx");
+        } catch (Exception e) {
+            System.err.println("导出违章记录失败：" + e.getMessage());
+        }
+    }
+}

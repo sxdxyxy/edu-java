@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.project.mapper.ProjectMapper">
+
+    <update id="remove">
+            UPDATE xm_project
+            SET is_delete = 1,
+            delete_by = #{deleteBy},
+            delete_reason = #{deleteReason},
+            delete_time = NOW()
+            WHERE
+            <if test="idList != null">
+                id IN
+                <foreach item="item" collection="idList" separator="," open="(" close=")" index="index">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="idList == null">
+                1 = 0
+            </if>
+    </update>
+
+    <select id="queryList" resultType="com.joyfishs.dawa.project.domain.vo.ProjectList">
+            SELECT id,
+            project_status AS status,
+            project_name,
+            project_type,
+            train_type AS trainType,
+            train_way AS trainWay,
+            IFNULL(train_sdate, IFNULL(practice_sdate, exam_sdate)) AS startDate,
+            IFNULL(exam_edate, IFNULL(practice_edate, train_edate)) AS endDate,
+            (SELECT COUNT(1)
+            FROM xm_project_relate b
+            WHERE b.project_id = a.id
+            AND b.is_delete = 0
+            AND b.type = 3) AS personNum,
+            (SELECT name FROM sys_user WHERE id = a.create_by) AS createBy,
+            create_time AS createDate
+            FROM xm_project a
+            WHERE is_delete = 0
+            AND project_type = #{type}
+            <if test="projectName != null and projectName != ''">
+                AND project_name LIKE CONCAT('%', #{projectName}, '%')
+            </if>
+            <if test="status != null">
+                AND project_status = #{status}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND IFNULL(train_sdate, IFNULL(practice_sdate, exam_sdate)) > #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND IFNULL(train_sdate, IFNULL(practice_sdate, exam_sdate)) &lt; #{endDate}
+            </if>
+            <if test="trainWay != null">
+                AND train_way = #{trainWay}
+            </if>
+            <if test="orgIds != null and orgIds.size() > 0">
+                AND org_id IN
+                <foreach item="item" collection="orgIds" separator="," open="(" close=")" index="index">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="orgId != null">
+                AND org_id IN (
+                    SELECT id FROM sys_org WHERE id = #{orgId}
+                    UNION
+                    SELECT id FROM sys_org WHERE pids LIKE CONCAT('%[', #{orgId}, ']%')
+                )
+            </if>
+            ORDER BY create_time DESC
+    </select>
+    <select id="findSysRecommendList" resultType="com.joyfishs.dawa.syscourse.domain.SysRecommendCourse">
+        SELECT a.id,
+        project_type,
+        project_name,
+        train_sdate,
+        train_edate,
+        train_type,
+        '课堂讲师' as teacher,
+        total_course_hours,
+        a.remark,
+        '/dawa/sys/oss/show/20220226/e37b7c2821cf4a9e904f2f502f7ee941.jpg' as coverImage
+        from xm_project a
+        WHERE a.is_delete = 0
+        and project_status &gt; 2
+        <if test='projectId != null'>
+            and a.id = #{projectId}
+        </if>
+        <if test='projectType != null'>
+            and project_type = #{projectType}
+            and year(a.train_sdate) = year(now())
+        </if>
+    </select>
+
+    <select id="getReminDList" resultType="com.joyfishs.dawa.project.entity.Project">
+        SELECT
+            a.*
+        FROM
+            xm_project a
+                LEFT JOIN xm_person_course_relate b ON a.id = b.project_id
+        WHERE
+            a.is_delete = 0
+          AND b.is_delete = 0
+          AND b.person_id = #{personId}
+          AND b.is_sign != 3
+        ORDER BY b.update_time DESC
+    </select>
+
+    <select id="getHourCount" resultType="int">
+        SELECT SUM(IFNULL(learn_hours, 0)) AS totalCourseHours
+        FROM xm_courseware a
+                 LEFT JOIN xm_course_relation_courseware b ON a.id = b.courseware_id
+        WHERE b.course_id IN (SELECT relate_ids FROM xm_project_relate WHERE project_id = #{projectId} AND type = 2 AND is_delete = 0)
+          AND a.is_delete = 0
+    </select>
+</mapper>

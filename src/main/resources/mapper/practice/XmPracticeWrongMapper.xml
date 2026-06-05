@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.practice.mapper.XmPracticeWrongMapper">
+
+    <select id="findWrongList" resultType="com.joyfishs.dawa.answer.vo.QuestionVo">
+            SELECT b.id AS question_id, b.question_name, b.question_type, b.answerA, b.answerB, b.answerC, b.answerD, b.answerE, b.answerF,
+            b.answer_parse, b.right_answers, a.my_answers, c.course_type
+            FROM xm_practice_wrong a
+            LEFT JOIN xm_course_question b ON a.question_id = b.id
+            LEFT JOIN xm_course c ON b.course_id = c.id
+            WHERE a.person_id = #{personId}
+            AND b.is_delete = 0
+            <if test='courseType != null and courseType != ""'>
+                AND c.course_type = #{courseType}
+            </if>
+            ORDER BY a.create_time DESC
+    </select>
+
+    <select id="findWrongClassifyList" resultType="java.util.Map">
+        SELECT DISTINCT c.course_type AS courseType, d.name AS courseTypeName
+        FROM xm_practice_wrong a
+                 LEFT JOIN xm_course_question b ON a.question_id = b.id
+                 LEFT JOIN xm_course c ON b.course_id = c.id
+                 LEFT JOIN sys_data_dictionary_item d ON dictionary_code = '0006' AND d.value = c.course_type AND d.is_delete = 0
+        WHERE a.person_id = #{personId}
+          AND b.is_delete = 0
+          AND c.is_delete = 0
+    </select>
+
+    <select id="getWrongByQuestionId" resultType="com.joyfishs.dawa.answer.vo.QuestionVo">
+        SELECT b.id AS question_id, b.question_name, b.question_type, b.answerA, b.answerB, b.answerC, b.answerD, b.answerE, b.answerF,
+               b.answer_parse, b.right_answers, a.my_answers
+        FROM xm_practice_wrong a
+                 LEFT JOIN xm_course_question b ON a.question_id = b.id
+        WHERE a.person_id = #{personId}
+          AND a.question_id = #{questionId}
+          AND b.is_delete = 0
+        ORDER BY a.create_time DESC
+        LIMIT 1
+    </select>
+
+</mapper>

@@ -1,0 +1,59 @@
+# ===========================================
+# 国产化环境配置 - 银河麒麟 + 达梦数据库 DM8
+# ===========================================
+
+server:
+  port: 8000
+  servlet:
+    context-path: /api
+
+token:
+  header: Authorization
+  secret: ${TOKEN_SECRET_DEV:emRv7k3tmXv878oLsrFBbPuHr6}
+  expireTime: 1800000
+
+logging:
+  level:
+    com.joyfishs: info
+    org.springframework: info
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+spring:
+  main:
+    allow-circular-references: true
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  
+  # 达梦数据库 DM8 配置
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    # 达梦 JDBC 驱动
+    driver-class-name: dm.jdbc.driver.DmDriver
+    # 达梦默认端口 5236
+    url: jdbc:dm://127.0.0.1:5236/SYSDBA?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull
+    username: SYSDBA
+    password: ${DM_PASSWORD:SYSDBA}
+  
+  # Redis 配置 - 国产化版本
+  redis:
+    host: 127.0.0.1
+    port: 16379
+    password: ${REDIS_PASSWORD_DEV:redis123}
+    timeout: 10s
+    lettuce:
+      pool:
+        min-idle: 0
+        max-idle: 8
+        max-active: 8
+        max-wait: -1ms
+
+# PageHelper 配置 - 达梦适配
+pagehelper:
+  helperDialect: oracle
+  reasonable: true
+  supportMethodsArguments: false
+  params: count=countSql

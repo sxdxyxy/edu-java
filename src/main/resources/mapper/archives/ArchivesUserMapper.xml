@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.archives.mapper.ArchivesUserMapper">
+    <select id="queryList" resultType="com.joyfishs.dawa.archives.domain.ArchivesUser">
+            select a.id,
+            a.name,
+            a.org_id,
+            a.plan_class_hour as year_class_hour_require
+            from xm_person a
+            left join sys_org b on a.org_id = b.id
+            left join xm_person_course_relate c on a.id = c.person_id
+            where a.is_delete = 0
+            and a.state = 1
+            and a.is_admin = 2
+            <if test="orgId != null and orgId != ''">
+                and (a.org_id = #{orgId} or b.pids like concat('%[', #{orgId} ,']%'))
+            </if>
+            <if test="projectId != null and projectId != ''">
+                and c.project_id = #{projectId}
+            </if>
+            <if test="name != null and name != ''">
+                and a.name like concat('%', #{name}, '%')
+            </if>
+    </select>
+    <select id="queryListAutoTrain" resultType="com.joyfishs.dawa.archives.domain.ArchivesUserAutoTrain">
+        SELECT a.id,
+                project_name,
+                IFNULL(train_sdate, IFNULL(practice_sdate, exam_sdate)) AS startDate,
+                IFNULL(exam_edate, IFNULL(practice_edate, train_edate)) AS endDate,
+                a.total_learn_hours                                     AS must_class_hour,
+                b.learn_hours                                           AS already_class_hour,
+                IF(b.is_sign = 3, 1, 0)                                 AS finish_state
+        FROM xm_project a
+                LEFT JOIN xm_person_course_relate b ON a.id = b.project_id
+        WHERE a.is_delete = 0
+            AND a.project_type = 1
+            AND a.project_status IN (3, 4)
+            AND b.is_delete = 0
+            AND b.person_id = #{personId}
+            <if test="projectName != null and projectName != ''">
+                AND a.project_name like concat('%', #{projectName}, '%')
+            </if>
+            <if test="finishState != null">
+                <choose>
+                    <when test="finishState == 0">
+                        AND b.is_sign in (1, 2)
+                    </when>
+                    <when test="finishState == 1">
+                        AND b.is_sign = 3
+                    </when>
+                </choose>
+            </if>
+            ORDER BY a.create_time DESC
+    </select>
+
+    <select id="queryListAutoTrainDetail" resultType="com.joyfishs.dawa.archives.domain.ArchivesUserAutoTrainDetail">
+        SELECT b.id,
+                b.course_name,
+                (SELECT SUM(c.learn_hours)
+                FROM xm_courseware c
+                        LEFT JOIN xm_course_relation_courseware d ON c.id = d.courseware_id
+                WHERE c.is_delete = 0
+                    AND d.is_delete = 0
+                    AND d.course_id = b.id) AS must_class_hour,
+                (SELECT SUM(study_hours)
+                FROM xm_project_person_study_record
+                WHERE is_delete = 0
+                    AND person_id = #{personId}
+                    AND project_id = a.project_id
+                    AND course_id = b.id)   AS already_class_hour
+        FROM xm_project_relate a
+                LEFT JOIN xm_course b ON a.relate_ids = b.id
+        WHERE a.is_delete = 0
+            AND b.is_delete = 0
+            AND a.project_id = #{projectId}
+            AND a.type = 2
+            <if test="courseName != null and courseName != ''">
+                AND b.course_name like concat('%', #{courseName}, '%')
+            </if>
+            ORDER BY a.sort
+    </select>
+
+    <select id="queryListAutoTrainAnswer" resultType="com.joyfishs.dawa.archives.domain.ArchivesUserAutoTrainAnswer">
+        SELECT id as report_id, submit_time as hand_date, answer_time as test_time, score as test_result
+        FROM xm_answer_report
+        WHERE person_id = #{personId} AND project_id = #{projectId}
+          AND type = 2 AND is_delete = 0
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="queryListTerminalTrain" resultType="com.joyfishs.dawa.archives.domain.ArchivesUserTerminalTrain">
+        SELECT a.id,
+                a.train_name                  AS project_name,
+                a.train_sdate                 AS start_date,
+                a.train_edate                 AS end_date,
+                a.train_address               AS train_addr,
+                b.sign_time                   AS sign_in_time,
+                IF(b.sign_time IS NULL, 0, 1) AS finish_state
+        FROM xm_project_terminal_train a
+                LEFT JOIN xm_project_terminal_train_sign b ON a.id = b.train_id
+        WHERE b.person_id = #{personId}
+            <if test="projectName != null and projectName != ''">
+                AND a.train_name LIKE concat('%', #{projectName}, '%')
+            </if>
+    </select>
+</mapper>

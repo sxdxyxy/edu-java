@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.project.mapper.ProjectRelateMapper">
+
+    <select id="getByProjectId" resultType="com.joyfishs.dawa.project.entity.ProjectRelate">
+        SELECT id, type, project_id, relate_ids, sort
+        FROM xm_project_relate
+        WHERE is_delete = 0
+          AND type IN (1, 3)
+          AND project_id = #{projectId}
+    </select>
+    <select id="getCourseByProjectId" resultType="com.joyfishs.dawa.project.entity.ProjectRelate">
+        SELECT *, relate_ids AS ids
+        FROM xm_project_relate
+        WHERE is_delete = 0
+          AND type = 2
+          AND project_id = #{projectId}
+        ORDER BY sort
+    </select>
+
+    <select id="getCourseList" resultType="com.joyfishs.dawa.student.domain.StudentCourseCatalogue">
+        select b.id as id,
+               b.course_name as name,
+               1 as type,
+               b.course_introduce as content
+        from xm_project_relate a
+                 left join xm_course b on a.relate_ids = b.id
+        where a.project_id = #{projectId}
+          and b.is_delete = 0
+          and a.is_delete = 0
+          and a.type = 2
+        group by b.id
+        order by a.sort
+    </select>
+
+    <select id="moveUp" resultType="com.joyfishs.dawa.project.entity.ProjectRelate">
+        SELECT
+        *
+        FROM
+        xm_project_relate A
+        WHERE
+        A.sort &lt; #{sort}
+        AND A.project_id = #{projectId}
+        ORDER BY
+        A.sort DESC
+        LIMIT 0,
+        1
+    </select>
+
+    <select id="moveDown" resultType="com.joyfishs.dawa.project.entity.ProjectRelate">
+        SELECT
+            *
+        FROM
+            xm_project_relate A
+        WHERE
+            A.sort &gt; #{sort}
+          AND A.project_id = #{projectId}
+        ORDER BY
+            A.sort ASC
+        LIMIT 0,
+            1
+    </select>
+</mapper>

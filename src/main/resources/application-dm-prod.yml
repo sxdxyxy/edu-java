@@ -1,0 +1,74 @@
+# ===========================================
+# 国产化生产环境配置 - 银河麒麟 + 达梦数据库 DM8
+# ===========================================
+
+server:
+  port: 8000
+  servlet:
+    context-path: /api
+  tomcat:
+    uri-encoding: UTF-8
+
+token:
+  header: Authorization
+  secret: ${TOKEN_SECRET}
+  expireTime: 1800000
+
+logging:
+  level:
+    com.joyfishs: warn
+    org.springframework: warn
+
+mybatis-plus:
+  configuration:
+    # 生产环境关闭SQL日志
+    log-impl: 
+
+spring:
+  main:
+    allow-circular-references: true
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  
+  # 达梦数据库 DM8 生产配置
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: dm.jdbc.driver.DmDriver
+    url: jdbc:dm://${DM_HOST:localhost}:${DM_PORT:5236}/${DM_DATABASE:SYSDBA}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull
+    username: ${DM_USERNAME:SYSDBA}
+    password: ${DM_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+  
+  # Redis 配置 - 国产化集群
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:16379}
+    password: ${REDIS_PASSWORD}
+    timeout: 10s
+    lettuce:
+      pool:
+        min-idle: 5
+        max-idle: 20
+        max-active: 50
+        max-wait: -1ms
+
+# PageHelper 配置 - 达梦适配
+pagehelper:
+  helperDialect: oracle
+  reasonable: true
+  supportMethodsArguments: false
+  params: count=countSql
+
+knife4j:
+  production: true
+  basic:
+    enable: ${KNIFE4J_BASIC_ENABLED:true}
+    username: ${KNIFE4J_BASIC_USERNAME}
+    password: ${KNIFE4J_BASIC_PASSWORD}

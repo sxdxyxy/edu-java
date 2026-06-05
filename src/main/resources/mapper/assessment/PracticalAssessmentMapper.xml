@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.assessment.mapper.PracticalAssessmentMapper">
+
+    <!-- 考核记录基础映射 -->
+    <resultMap id="PracticalAssessmentResultMap" type="com.joyfishs.dawa.assessment.entity.PracticalAssessment">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="projectId" column="project_id"/>
+        <result property="orgId" column="org_id"/>
+        <result property="assessmentType" column="assessment_type"/>
+        <result property="assessmentDate" column="assessment_date"/>
+        <result property="location" column="location"/>
+        <result property="examinerId" column="examiner_id"/>
+        <result property="score" column="score"/>
+        <result property="result" column="result"/>
+        <result property="videoUrl" column="video_url"/>
+        <result property="evidencePhotos" column="evidence_photos"/>
+        <result property="remarks" column="remarks"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- 统计指定组织的考核总数 -->
+    <select id="countTotalByOrg" parameterType="java.lang.Long" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM practical_assessments
+        WHERE is_delete = 0
+        <if test="orgId != null">
+            AND EXISTS (
+                SELECT 1 FROM xm_project p
+                WHERE p.id = practical_assessments.project_id
+                AND p.org_id = #{orgId}
+            )
+        </if>
+    </select>
+
+    <!-- 统计指定组织通过考核的数量 -->
+    <select id="countPassedByOrg" parameterType="java.lang.Long" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM practical_assessments
+        WHERE is_delete = 0
+        <if test="orgId != null">
+            AND EXISTS (
+                SELECT 1 FROM xm_project p
+                WHERE p.id = practical_assessments.project_id
+                AND p.org_id = #{orgId}
+            )
+        </if>
+        AND result IN ('pass', 'excellent')
+    </select>
+
+    <!-- 统计指定组织优秀考核的数量 -->
+    <select id="countExcellentByOrg" parameterType="java.lang.Long" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM practical_assessments
+        WHERE is_delete = 0
+        <if test="orgId != null">
+            AND EXISTS (
+                SELECT 1 FROM xm_project p
+                WHERE p.id = practical_assessments.project_id
+                AND p.org_id = #{orgId}
+            )
+        </if>
+        AND result = 'excellent'
+    </select>
+
+</mapper>

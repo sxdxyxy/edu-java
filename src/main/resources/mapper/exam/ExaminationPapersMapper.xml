@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.exam.mapper.ExaminationPapersMapper">
+
+    <!-- 通过学生ID和项目ID查询 学生学习记录 -->
+    <select id="findStudentRecord" resultType="com.joyfishs.dawa.student.entity.ProjectPersonStudyRecord">
+        SELECT * FROM xm_project_person_study_record 
+        WHERE is_delete = 0 and person_id = #{personId} and project_id = #{projectId}
+    </select>
+
+    <!-- 查询 人员预约状态 -->
+    <select id="findPersonSubscriptExamStatus" resultType="com.joyfishs.dawa.exam.entity.StudentSubscribeExam">
+        SELECT * FROM xm_student_subscribe_exam 
+        WHERE is_delete = 0 and person_id = #{personId} and project_id = #{projectId}
+    </select>
+
+    <!-- 查询考试列表 -->
+    <select id="findExamAll" resultType="com.joyfishs.dawa.project.entity.Project">
+        SELECT 
+            b.*,
+            ANY_VALUE(a.candidate_no) as candidate_no
+        FROM 
+            xm_person_course_relate a 
+            LEFT JOIN xm_project b ON b.id = a.project_id
+        WHERE  
+            b.is_delete=0 and a.is_delete=0 and b.train_way in(2,4) 
+            and a.person_id = #{personId} and a.if_join_exam = 0  and b.exam_edate > now()
+        <if test='examClassify != null'>  
+            and b.train_class =#{examClassify} 
+        </if> 
+        <if test='status != null'>  
+            and b.project_status =#{status} 
+        </if> 
+        GROUP BY b.id 
+    </select>
+
+    <!-- 通过人员ID和项目ID获取考试详情列表 -->
+    <select id="findExamQuestion" resultType="com.joyfishs.dawa.answer.entity.AnswerReport">
+        SELECT * from xm_answer_report 
+        WHERE person_id = #{personId} and project_id = #{projectId} and is_delete = 0 and type=#{examType} and course_id is null 
+        ORDER BY create_time desc
+    </select>
+
+    <!-- 根据报告ID查询报告项 -->
+    <select id="findByReporId" resultType="com.joyfishs.dawa.answer.entity.AnswerReportItem">
+        SELECT * from xm_answer_report_item WHERE report_id = #{reportId}
+    </select>
+
+    <!-- 通过题目Ids 获取 题目类别，此题的分数，此题的正确答案 -->
+    <select id="findExamQuestionDetail" resultType="com.joyfishs.dawa.exam.domain.ExamQuestionVO">
+        select a.id as questionId,a.question_type,b.topic_score,a.right_answers from xm_course_question a 
+        LEFT JOIN  xm_project_test_paper_tactics b ON a.question_type = b.topic_type 
+        where b.is_delete=0 and a.id in 
+        <foreach item='item' collection='questionIds' separator=',' open='(' close=')' index='index'> 
+            #{item}
+        </foreach>
+        and b.project_id = #{projectId}
+    </select>
+
+    <!-- 查询已参加的考试 -->
+    <select id="findAttendExamAll" resultType="com.joyfishs.dawa.project.entity.Project">
+        SELECT 
+            b.*, 
+            ifnull((select score from xm_answer_report a where a.person_id =c.person_id and a.is_delete = 0 and type=2 and project_id = b.id ORDER BY create_time limit 1),0) score, 
+            ifnull((select answer_time from xm_answer_report a where a.person_id =c.person_id and a.is_delete = 0 and type=2 and project_id = b.id  ORDER BY create_time limit 1),0) examinationTime,
+            ANY_VALUE(c.candidate_no) as candidate_no
+        from xm_project b left join xm_person_course_relate c on c.project_id = b.id 
+        where b.is_delete = 0 
+            and c.is_delete = 0 
+            and b.train_way in (2, 4) 
+            and c.person_id = #{personId} 
+        <if test='examClassify != null'>  
+            and b.train_class =#{examClassify} 
+        </if> 
+        and (b.id in (select a.project_id from xm_answer_report a where a.person_id =c.person_id and a.is_delete = 0 and type=2) or b.exam_edate &lt; now()) 
+        GROUP BY b.id 
+    </select>
+
+    <!-- 查询报告 -->
+    <select id="findReport" resultType="com.joyfishs.dawa.answer.entity.AnswerReport">
+        SELECT * FROM xm_answer_report 
+        where person_id=#{personId} and project_id= #{projectId} and type=2 and is_delete = 0 
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 获取击败百分比 -->
+    <select id="getBeat" resultType="java.math.BigDecimal">
+        select round(  
+            (select count(DISTINCT person_id) from xm_answer_report where score &lt; #{score} and type = 2 and is_delete = 0 and course_id is null and project_id = #{projectId})
+            /  
+            (select count(DISTINCT person_id) from xm_answer_report where project_id = #{projectId} and type = 2 and is_delete = 0 and course_id is null) * 100 , 2)
+    </select>
+
+    <!-- 获取平均分 -->
+    <select id="getAvg" resultType="java.math.BigDecimal">
+        select avg(score) from xm_answer_report where project_id = #{projectId} and type = 2
+    </select>
+
+    <!-- 查询移动端考试列表 -->
+    <select id="findMobileExamList" resultType="com.joyfishs.dawa.project.entity.Project">
+        SELECT 
+            b.* , 
+            if_join_exam,
+            ifnull((select (count(1) &lt; exam_number and max(ifnull(c.score,0)) &lt; b.pass_score) from xm_answer_report c where c.type = 2 
+                and if_attend = 1 and c.is_delete = 0 and c.person_id = a.person_id  and c.project_id = b.id ),0) makeUpExam 
+        FROM  xm_person_course_relate a 
+            LEFT JOIN xm_project b ON a.project_id = b.id 
+        WHERE a.is_delete = 0  
+            and b.is_delete = 0  
+            and b.train_way IN ( 2, 4 ) 
+            and a.person_id = #{personId} 
+            and a.learn_hours >= b.exam_open_condition 
+        <if test='examClassify != null'>  
+            and b.train_class =#{examClassify} 
+        </if> 
+        <if test='status != null'>  
+            and b.project_status =#{status} 
+        </if> 
+    </select>
+
+    <!-- 查询作业列表 -->
+    <select id="getClassworkList" resultType="com.joyfishs.dawa.student.domain.vo.MyClassworkListVo">
+        select id,submit_time  
+        from xm_answer_report  
+        where type = 4  
+            and is_delete = 0  
+            and person_id = #{personId}  
+            and project_id = #{projectId}  
+        order by submit_time desc 
+    </select>
+
+</mapper>

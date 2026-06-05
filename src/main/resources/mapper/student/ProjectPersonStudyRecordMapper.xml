@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.student.mapper.ProjectPersonStudyRecordMapper">
+    <select id="getObtainHours" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(IFNULL(study_hours, 0)), 0) AS hours FROM xm_project_person_study_record
+            WHERE project_id = #{projectId}
+            AND person_id = #{personId}
+            AND is_delete = 0
+    </select>
+
+    <select id="getRecordCount" resultType="java.lang.Integer">
+        select count(1) from xm_project_person_study_record
+        where is_delete = 0
+          and project_id = #{projectId}
+          and person_id = #{personId}
+          and course_id = #{courseId}
+          and courseware_id = #{coursewareId}
+    </select>
+
+    <select id="getSumStudyHours" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(study_hours), 0) FROM xm_project_person_study_record
+        WHERE is_delete = 0
+          AND person_id = #{personId}
+    </select>
+
+    <select id="getYearSumStudyHours" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(study_hours), 0) FROM xm_project_person_study_record
+        WHERE is_delete = 0 AND YEAR(create_time) = YEAR(NOW())
+          and person_id = #{personId}
+    </select>
+
+    <select id="getNoticeStudyHours" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(study_hours), 0) FROM xm_project_person_study_record
+        WHERE is_delete = 0 AND YEAR(create_time) = YEAR(NOW())
+          AND notice_id IS NOT NULL
+          AND person_id = #{personId}
+    </select>
+</mapper>

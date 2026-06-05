@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.answer.mapper.AnswerReportMapper">
+    <select id="getBeat" resultType="java.math.BigDecimal">
+        SELECT ROUND(
+                               (
+                                   SELECT COUNT(1)
+                                   FROM xm_answer_report
+                                   WHERE score &lt; #{score}
+                               ) / (
+                                   SELECT COUNT(1)
+                                   FROM xm_answer_report
+                                   WHERE course_id = #{courseId}
+                               ) * 100, 2)
+    </select>
+
+    <select id="getAvgScore" resultType="java.math.BigDecimal">
+        SELECT AVG(score) FROM xm_answer_report WHERE course_id = #{courseId}
+    </select>
+
+    <select id="findMockTestList" resultType="com.joyfishs.dawa.answer.entity.AnswerReport">
+        SELECT id, submit_time, answer_time, score
+        FROM xm_answer_report
+        WHERE is_delete = 0
+          AND type = 1
+          AND project_id = #{projectId}
+          AND person_id = #{personId}
+    </select>
+
+    <select id="findExamResult" resultType="map">
+        SELECT score, answer_time,
+               IF (b.score >= (SELECT pass_score FROM xm_project WHERE id = #{projectId}), 1, 0) AS qualified
+        FROM xm_answer_report b
+        WHERE b.person_id = #{personId}
+          AND b.project_id = #{projectId}
+          AND b.type = 2
+          AND b.course_id IS NULL
+        ORDER BY b.create_time DESC
+        LIMIT 1
+    </select>
+
+    <select id="findPracticeResult" resultType="map">
+            SELECT SUM(answered_questions) AS answered_questions, SUM(right_questions) AS right_questions
+            FROM xm_answer_report
+            WHERE id IN (
+                SELECT MAX(a.id) AS id
+                FROM xm_answer_report a
+                WHERE a.type = 3
+                    AND a.person_id = #{personId}
+                    <if test="projectId != null and projectId != ''">
+                        AND a.course_id IN (
+                            SELECT relate_ids
+                            FROM xm_project_relate
+                            WHERE project_id = #{projectId}
+                                AND type = 2
+                                AND is_delete = 0
+                        )
+                    </if>
+                    <if test="courseId != null and courseId !='' ">
+                        AND a.course_id = #{courseId}
+                    </if>
+                GROUP BY course_id
+            )
+    </select>
+
+    <select id="getQuestionCountByProjectId" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM xm_course_question
+        WHERE is_delete = 0
+          AND course_id IN (
+            SELECT relate_ids
+            FROM xm_project_relate
+            WHERE project_id = #{projectId}
+              AND type = 2
+              AND is_delete = 0
+        )
+    </select>
+
+    <select id="getQuestionCountByCourseId" resultType="java.lang.Integer">
+        SELECT COUNT(1)
+        FROM xm_course_question
+        WHERE is_delete = 0
+          AND course_id = #{courseId}
+    </select>
+
+    <select id="getMaxScore" resultType="com.joyfishs.dawa.answer.entity.AnswerReport">
+        SELECT *
+        FROM xm_answer_report
+        WHERE is_delete = 0
+          AND type = 2
+          AND project_id = #{projectId}
+          AND person_id = #{personId}
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+</mapper>

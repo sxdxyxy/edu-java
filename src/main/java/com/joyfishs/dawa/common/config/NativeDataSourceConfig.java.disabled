@@ -1,0 +1,64 @@
+package com.joyfishs.dawa.common.config;
+
+import com.joyfishs.dawa.common.adapter.DmDialectAdapter;
+import org.apache.ibatis.plugin.Interceptor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import javax.sql.DataSource;
+import java.sql.Driver;
+import java.sql.DriverManager;
+import java.util.Properties;
+
+/**
+ * 国产化数据库配置
+ * 支持达梦DM8数据库与MySQL的双环境切换
+ *
+ * @author native-adaptation
+ */
+@Configuration
+public class NativeDataSourceConfig {
+
+    /**
+     * 达梦SQL方言适配器
+     * 自动处理MySQL与DM8的语法差异
+     */
+    @Bean
+    @ConditionalOnProperty(name = "spring.datasource.driver-class-name", havingValue = "dm.jdbc.driver.DmDriver")
+    public Interceptor dmDialectAdapter() {
+        DmDialectAdapter adapter = new DmDialectAdapter();
+        adapter.setProperties(new Properties() {{
+            setProperty("databaseType", "dm");
+        }});
+        return adapter;
+    }
+
+    /**
+     * 注册达梦数据库驱动
+     * 当检测到达梦驱动类时自动注册
+     */
+    @Bean
+    public DmDriverRegistrar dmDriverRegistrar() {
+        return new DmDriverRegistrar();
+    }
+
+    /**
+     * 达梦驱动注册器
+     * 解决达梦驱动未在 DriverManager 中注册的问题
+     */
+    public static class DmDriverRegistrar {
+        static {
+            try {
+                // 尝试加载达梦驱动
+                Class<?> dmDriverClass = Class.forName("dm.jdbc.driver.DmDriver");
+                Driver driver = (Driver) dmDriverClass.getDeclaredConstructor().newInstance();
+                DriverManager.registerDriver(driver);
+                System.out.println("达梦数据库驱动注册成功");
+            } catch (Exception e) {
+                // 驱动未找到，跳过注册（可能仍在使用MySQL）
+                System.out.println("达梦数据库驱动未找到，将使用配置的驱动");
+            }
+        }
+    }
+}

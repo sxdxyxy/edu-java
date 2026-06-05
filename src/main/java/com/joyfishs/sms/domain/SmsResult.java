@@ -1,0 +1,31 @@
+package com.joyfishs.sms.domain;
+
+import lombok.Builder;
+import lombok.Data;
+
+/**
+ * 上传短信返回体
+ *
+ * @author ykfnb
+ */
+@Data
+@Builder
+public class SmsResult {
+
+    /**
+     * 是否成功
+     */
+    private boolean isSuccess;
+
+    /**
+     * 响应消息
+     */
+    private String message;
+
+    /**
+     * 实际响应体
+     * <p>
+     * 可自行转换为 SDK 对应的 SendSmsResponse
+     */
+    private String response;
+}

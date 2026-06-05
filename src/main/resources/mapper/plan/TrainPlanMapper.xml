@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.plan.mapper.TrainPlanMapper">
+
+	<!-- 查询培训计划列表 -->
+	<select id="list" resultType="com.joyfishs.dawa.plan.entity.TrainPlan">
+		select distinct a.id,
+		       (select b.name from sys_org b where b.id = a.org_id and b.is_delete = 0 ) orgName,
+		       a.type,
+		       a.name,
+		       a.year,
+		       a.status,
+		       a.create_time,
+		       a.create_by,
+		       (select c.name from sys_user c where c.id = a.create_by ) createName,
+		       a.remark
+		from xm_train_plan a
+		left join xm_project p on a.id = p.train_plan_id and p.is_delete = 0
+		where a.is_delete = 0
+		  and a.type = #{type}
+		  <if test='orgId != null'>
+			  and (a.org_id in (SELECT id FROM `sys_org` WHERE pids LIKE CONCAT('%[',#{orgId},']%')) or a.org_id = #{orgId})
+		  </if>
+		  <if test='year != null'>
+			  and a.year = #{year}
+		  </if>
+		  <if test='name != null and name != ""'>
+			  and a.name like concat('%', #{name}, '%')
+		  </if>
+		  <if test='projectId != null'>
+			  and p.id = #{projectId}
+		  </if>
+		order by a.create_time desc
+	</select>
+
+	<!-- 查询培训计划下的课程包含人数 -->
+	<select id="getProjectListByPlanId" resultType="com.joyfishs.dawa.project.entity.Project">
+		select a.*, (select count(1) from xm_person_course_relate b where b.is_delete = 0 and b.project_id = a.id) signCount
+		from xm_project a
+		where a.train_plan_id = #{id}
+		  and a.is_delete = 0
+	</select>
+
+	<!-- 查询培训计划下的课程包含人数 -->
+	<select id="getProjectIdList" resultType="java.lang.Long">
+		select id from xm_project a where is_delete = 0 and train_plan_id = #{id}
+	</select>
+</mapper>

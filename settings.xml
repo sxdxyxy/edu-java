@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+
+    <servers>
+        <server>
+            <id>cmnt2-joyfishs/safe-edu/safe-edu</id>
+            <username>cnb</username>
+            <password>${CNB_TOKEN}</password>
+        </server>
+    </servers>
+
+    <profiles>
+        <profile>
+            <id>safe-edu-profile</id>
+            <repositories>
+                <repository>
+                    <id>tencent-maven</id>
+                    <name>TencentCloud Maven</name>
+                    <url>https://mirrors.cloud.tencent.com/nexus/repository/maven-public/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </repository>
+                <!--    这里会使用 server 中配置的账号密码-->
+                <!--    必须与 server 的 id 一致-->
+                <repository>
+                    <id>cmnt2-joyfishs/safe-edu/safe-edu</id>
+                    <name>safe-edu</name>
+                    <url>https://maven.cnb.cool/cmnt2/joyfishs/safe-edu/safe-edu/-/packages/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>maven2-plugin</id>
+                    <url>https://mirrors.cloud.tencent.com/nexus/repository/maven-public/</url>
+                </pluginRepository>
+            </pluginRepositories>
+        </profile>
+    </profiles>
+    <activeProfiles>
+        <activeProfile>safe-edu-profile</activeProfile>
+    </activeProfiles>
+</settings>

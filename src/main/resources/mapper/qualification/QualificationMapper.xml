@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.qualification.mapper.QualificationMapper">
+
+    <!-- 资质证件基础映射 -->
+    <resultMap id="QualificationResultMap" type="com.joyfishs.dawa.qualification.entity.Qualification">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="certType" column="cert_type"/>
+        <result property="certNo" column="cert_no"/>
+        <result property="issueDate" column="issue_date"/>
+        <result property="expiryDate" column="expiry_date"/>
+        <result property="issuingAuthority" column="issuing_authority"/>
+        <result property="certPhotoUrl" column="cert_photo_url"/>
+        <result property="status" column="status"/>
+        <result property="verified" column="verified"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="holderName" column="holder_name"/>
+        <result property="orgId" column="org_id"/>
+    </resultMap>
+
+    <!-- 根据用户 ID 查询资质列表 -->
+    <select id="selectByUserId" resultMap="QualificationResultMap">
+        SELECT * FROM qualifications WHERE user_id = #{userId} ORDER BY created_at DESC
+    </select>
+
+    <!-- 根据用户 ID 和状态查询资质列表 -->
+    <select id="selectByUserIdAndStatus" resultMap="QualificationResultMap">
+        SELECT * FROM qualifications WHERE user_id = #{userId} AND status = #{status} ORDER BY created_at DESC
+    </select>
+
+    <!-- 查询即将过期的资质（30 天内） -->
+    <select id="selectExpiringSoon" resultMap="QualificationResultMap">
+        SELECT *,
+            CASE 
+                WHEN expiry_date IS NOT NULL THEN DATEDIFF(expiry_date, CURDATE())
+                ELSE NULL
+            END AS days_to_expiry
+        FROM qualifications 
+        WHERE expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+        AND status != 'expired'
+        ORDER BY expiry_date ASC
+    </select>
+    
+    <!-- 查询指定组织即将到期的资质证件 -->
+    <select id="selectExpiringByOrgId" resultMap="QualificationResultMap">
+        SELECT q.*,
+            CASE 
+                WHEN q.expiry_date IS NOT NULL THEN DATEDIFF(q.expiry_date, CURDATE())
+                ELSE NULL
+            END AS days_to_expiry
+        FROM qualifications q
+        INNER JOIN xm_person p ON q.user_id = p.id
+        WHERE p.org_id = #{orgId}
+        AND q.expiry_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL #{days} DAY)
+        AND q.status != 'expired'
+        ORDER BY q.expiry_date ASC
+    </select>
+
+</mapper>

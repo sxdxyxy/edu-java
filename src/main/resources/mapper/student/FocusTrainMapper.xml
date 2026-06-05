@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.student.mapper.FocusTrainMapper">
+
+    <resultMap type="com.joyfishs.dawa.student.domain.vo.FocusTrainVo" id="FocusTrainVoResult">
+        <result property="id" column="id"/>
+        <result property="trainName" column="train_name"/>
+        <result property="trainSdate" column="train_sdate"/>
+        <result property="trainEdate" column="train_edate"/>
+        <result property="trainAddress" column="train_address"/>
+        <result property="learningContent" column="learning_content"/>
+        <result property="status" column="status"/>
+        <result property="signStatus" column="signStatus"/>
+        <result property="personNum" column="person_num"/>
+        <result property="signNum" column="signNum"/>
+        <result property="signWay" column="sign_way"/>
+        <result property="contact" column="contact"/>
+        <result property="phone" column="phone"/>
+    </resultMap>
+
+    <select id="getList" parameterType="map" resultMap="FocusTrainVoResult">
+        select a.id,
+               train_name,
+               train_sdate,
+               train_edate,
+               host,
+               person_num,
+               learning_content,
+               contact,
+               phone,
+               status,
+               if(enroll_status is null, null, (if(enroll_status = 1, 2, 1))) signStatus
+        from xm_project_terminal_train a
+                 left join xm_project_terminal_train_sign b on a.id = b.train_id and b.person_id = #{personId} and
+                                                               b.is_delete = 0
+        where a.is_delete = 0
+          and a.status > 1
+          and exists(select 1 from xm_person p left join sys_org o on p.org_id = o.id
+                     where (o.pids like concat('%[', a.org_id, ']%') or p.org_id = a.org_id)
+                       and p.id = #{personId})
+        <if test='name != null and name != ""'>
+            and a.train_name like concat('%', #{name}, '%')
+        </if>
+        <if test='status != null'>
+            and a.status = #{status}
+        </if>
+        order by enroll_status desc
+    </select>
+
+    <select id="getSignCount" parameterType="long" resultType="integer">
+        select count(1)
+        from xm_project_terminal_train_sign a
+        where is_delete = 0
+          and enroll_status = 1
+          and train_id = #{trainId}
+    </select>
+
+    <select id="getSignStatus" resultType="integer">
+        select count(1)
+        from xm_project_terminal_train_sign b
+        where b.is_delete = 0
+          and enroll_status = 1
+          and b.person_id = #{personId}
+          and b.train_id = #{trainId}
+    </select>
+
+    <select id="getDetail" parameterType="long" resultMap="FocusTrainVoResult">
+        SELECT id,
+               train_name,
+               train_sdate,
+               train_edate,
+               train_address,
+               learning_content,
+               status,
+               person_num,
+               contact,
+               phone
+        FROM xm_project_terminal_train
+        WHERE is_delete = 0
+          and id = #{trainId}
+    </select>
+
+</mapper>

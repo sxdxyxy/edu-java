@@ -1,0 +1,38 @@
+server:
+  port: 8000
+  servlet:
+    context-path: /api
+token:
+  header: Authorization
+  secret: ${TOKEN_SECRET_DEV:emRv7k3tmXv878oLsrFBbPuHr6}
+  expireTime: 1800000
+logging:
+  level:
+    com.joyfishs: info
+    org.springframework: info
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+spring:
+  main:
+    allow-circular-references: true
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3308/safe_train?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: safe_edu
+    password: ${MYSQL_PASSWORD:safeedu123}
+  redis:
+      host: 127.0.0.1
+      port: 16380
+      password: ${REDIS_PASSWORD_DEV:redis123}
+      timeout: 10s
+      lettuce:
+        pool:
+          min-idle: 0
+          max-idle: 8
+          max-active: 8
+          max-wait: -1ms

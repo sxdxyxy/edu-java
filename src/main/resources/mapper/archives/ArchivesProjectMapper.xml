@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.archives.mapper.ArchivesProjectMapper">
+    <select id="findArchiveProjectList" resultType="com.joyfishs.dawa.archives.domain.ArchivesProject">
+        SELECT a.id,
+        a.project_name AS NAME,
+        CONCAT(a.train_sdate, ' - ', a.train_edate) AS time,
+        CASE
+        WHEN a.train_way = 1 THEN '培训'
+        WHEN a.train_way = 2 THEN '考试'
+        WHEN a.train_way = 3 THEN '培训练习'
+        ELSE '培训练习考试'
+        END AS way,
+        (SELECT count(1)
+        FROM xm_person_course_relate b
+        WHERE b.project_id = a.id
+        AND b.is_delete = 0) AS peopleSize,
+        (SELECT NAME
+        FROM sys_user
+        WHERE id = a.create_by) AS creater,
+        a.create_time,
+        CASE
+        WHEN a.project_status = 1 THEN '未发布'
+        WHEN a.project_status = 2 THEN '未开始'
+        WHEN a.project_status = 3 THEN '进行中'
+        WHEN a.project_status = 4 THEN '已完成'
+        ELSE '已终止'
+        END AS statusName
+        FROM xm_project a
+        <where>
+            a.is_delete = 0
+            <if test="projectId != null and projectId != ''">
+                AND a.id = #{projectId}
+            </if>
+            <if test="projectName != null and projectName != ''">
+                AND a.project_name LIKE CONCAT('%', #{projectName}, '%')
+            </if>
+            <if test="trainWay != null and trainWay != ''">
+                AND a.train_way = #{trainWay}
+            </if>
+            <if test="trainClass != null and trainClass != ''">
+                AND a.train_class = #{trainClass}
+            </if>
+        </where>
+        ORDER BY a.create_time DESC, a.id
+    </select>
+
+    <select id="findUserListPage" resultType="com.joyfishs.dawa.archives.domain.ArchivesProjectUser">
+        SELECT b.id, b.name, b.org_id as orgId, c.total_learn_hours as mustClassHour,
+        a.learn_hours as alreadyClassHour,
+        ifnull((select sum(total_questions) from xm_answer_report WHERE type = 3 and person_id = b.id and project_id =
+        #{projectId} and is_delete = 0 ),0) as addUpExercises,
+        ifnull((select sum(answered_questions) from xm_answer_report WHERE type = 3 and person_id = b.id and project_id
+        = #{projectId} and is_delete = 0 ),0) as alreadyExercises,
+        ifnull((select sum(right_questions) from xm_answer_report WHERE type = 3 and person_id = b.id and project_id =
+        #{projectId} and is_delete = 0 ),0) as yesTopic,
+        c.pass_score as passScore,
+        ifnull((select answer_time from xm_answer_report where person_id = b.id and project_id = #{projectId} and type =
+        2 and is_delete = 0 order by create_time desc limit 1),0) as testTime,
+        ifnull((select score from xm_answer_report where person_id = b.id and project_id = #{projectId} and type = 2 and
+        is_delete = 0 order by create_time desc limit 1),0) as testResult,
+        if(ifnull((select submit_time from xm_answer_report where person_id = b.id and project_id = #{projectId} and
+        type = 2 and is_delete = 0 order by create_time desc limit 1), 0) = 0,3,0) as testState
+        FROM xm_person_course_relate a
+        LEFT JOIN xm_person b ON a.person_id = b.id
+        LEFT JOIN xm_project c ON a.project_id = c.id
+        <where>
+            project_id = #{projectId}
+            <if test="state == 1">
+                and (select score from xm_answer_report where person_id = b.id and project_id = #{projectId} and type =
+                2 and is_delete = 0 order by create_time desc limit 1) &gt;= c.pass_score
+            </if>
+            <if test="state == 2">
+                and (select score from xm_answer_report where person_id = b.id and project_id = #{projectId} and type =
+                2 and is_delete = 0 order by create_time desc limit 1) &lt; c.pass_score
+            </if>
+            <if test="state == 3">
+                and a.if_join_exam = 0
+            </if>
+            <if test="userName != null and userName != ''">
+                and b.name = #{userName}
+            </if>
+        </where>
+    </select>
+</mapper>

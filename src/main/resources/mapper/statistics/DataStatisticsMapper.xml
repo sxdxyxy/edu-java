@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.statistics.mapper.DataStatisticsMapper">
+
+    <select id="listDataStatisticsPersonal" resultType="com.joyfishs.dawa.statistics.domain.DataStatisticsPersonal">
+        SELECT B.id                       personId,
+            B.name,
+            D.name                        orgName,
+            B.work_type                   type,
+            B.plan_class_hour,
+            SUM(IFNULL(A.study_hours, 0)) sumClassHour,
+            IFNULL(SUM(study_hours), 0)   yearClassHour
+            FROM xm_project_person_study_record A
+            RIGHT JOIN xm_person B ON A.person_id = B.id
+            LEFT JOIN sys_org D ON B.org_id = D.id
+            WHERE B.is_delete = 0
+                AND YEAR(A.create_time) = #{year}
+            <if test="orgId != null">
+                AND (B.org_id = #{orgId} OR D.pids like concat('%[', #{orgId}, ']%'))
+            </if>
+            <if test="personName != null and personName != ''">
+                AND B.name like concat('%', #{personName}, '%')
+            </if>
+            GROUP BY B.id
+            <choose>
+                <when test="asc == 1">
+                    ORDER BY sumClassHour DESC
+                </when>
+                <otherwise>
+                    ORDER BY yearClassHour DESC
+                </otherwise>
+            </choose>
+    </select>
+
+    <select id="listPersonalClassHourTop" resultType="com.joyfishs.dawa.statistics.domain.DataStatisticsPersonal">
+        SELECT B.id                           personId,
+                B.name,
+                D.name                        orgName,
+                B.work_type                   type,
+                B.plan_class_hour,
+                SUM(IFNULL(A.study_hours, 0)) sumClassHour,
+                IFNULL(SUM(study_hours), 0)   yearClassHour
+            FROM xm_project_person_study_record A
+            RIGHT JOIN xm_person B ON A.person_id = B.id
+            LEFT JOIN sys_org D ON B.org_id = D.id
+            WHERE B.is_delete = 0
+                AND YEAR(A.create_time) = YEAR(NOW())
+            <if test="orgId != null">
+                AND (B.org_id = #{orgId} OR D.pids like concat('%[', #{orgId}, ']%'))
+            </if>
+            GROUP BY B.id
+            <choose>
+                <when test="asc == 1">
+                    order by sumClassHour desc
+                </when>
+                <otherwise>
+                    order by yearClassHour desc
+                </otherwise>
+            </choose>
+            LIMIT 10
+    </select>
+
+    <select id="getDataCountByOrgId" resultType="map">
+        SELECT (SELECT COUNT(1) FROM xm_person WHERE is_delete = 0 AND org_id = #{orgId}) AS person_count,
+               (SELECT COUNT(DISTINCT a.id)
+                FROM xm_person a
+                         LEFT JOIN xm_person_course_relate b ON a.id = b.person_id
+                WHERE a.is_delete = 0
+                  AND a.org_id = #{orgId}
+                  AND b.is_sign = 3)                                               AS train_count,
+               (SELECT IFNULL(SUM(study_hours), 0)
+                FROM xm_person a
+                         LEFT JOIN xm_project_person_study_record b ON a.id = b.person_id
+                WHERE a.is_delete = 0
+                  AND a.org_id = #{orgId}
+                  AND YEAR(b.create_time) = YEAR(NOW()))                           AS year_class_hour,
+               (SELECT IFNULL(SUM(study_hours), 0)
+                FROM xm_person a
+                         LEFT JOIN xm_project_person_study_record b ON a.id = b.person_id
+                WHERE a.is_delete = 0
+                  AND a.org_id = #{orgId})                                                AS sum_class_hour
+    </select>
+    <select id="getNumberOfRegistrants" resultType="int">
+        SELECT COUNT(*)
+        FROM xm_person A
+                 LEFT JOIN sys_org B ON A.org_id = B.id
+        WHERE (A.org_id = #{orgId} OR B.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+          AND state = 1
+          AND A.is_delete = 0
+    </select>
+    <select id="getNumberOfActive" resultType="int">
+        SELECT COUNT(*)
+        FROM xm_person A
+                 LEFT JOIN sys_user B ON A.user_id = B.id
+                 LEFT JOIN sys_org C ON A.org_id = C.id
+        WHERE (A.org_id = #{orgId} OR C.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+          AND A.state = 1
+          AND A.is_delete = 0
+          AND B.login_date &gt;= #{loginTime}
+    </select>
+
+    <select id="getNumberOfCourses" resultType="int">
+        SELECT COUNT(DISTINCT course_id)
+        FROM xm_project_person_study_record A
+                 INNER JOIN xm_person B ON A.person_id = B.id
+                 INNER JOIN sys_org C ON B.org_id = C.id
+        WHERE (B.org_id = #{orgId} OR C.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+    </select>
+
+    <select id="getFinishClassHours" resultType="java.math.BigDecimal">
+        SELECT SUM(A.study_hours)
+        FROM xm_project_person_study_record A
+                 INNER JOIN xm_person B ON A.person_id = B.id
+                 INNER JOIN sys_org C ON B.org_id = C.id
+        WHERE (B.org_id = #{orgId} OR C.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+          AND A.is_delete = 0
+    </select>
+
+    <select id="getLatelyEventsList" resultType="com.joyfishs.dawa.statistics.domain.EventsList">
+        SELECT B.id          personId,
+               B.name        target,
+               A.create_time eventTime,
+               C.course_name event
+        FROM xm_project_person_study_record A
+                 RIGHT JOIN xm_person B ON A.person_id = B.id
+                 LEFT JOIN xm_course C ON A.course_id = C.id
+                 INNER JOIN sys_org D ON B.org_id = D.id
+        WHERE (B.org_id = #{orgId} OR D.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+        ORDER BY A.create_time DESC
+        LIMIT 6
+    </select>
+
+    <select id="getLatelyActiveRecord" resultType="com.joyfishs.dawa.statistics.domain.ActiveRecord">
+        SELECT DATE_FORMAT(B.login_date, '%Y-%m-%d') date,
+               COUNT(*)                              count
+        FROM xm_person A
+                 LEFT JOIN sys_user B ON A.user_id = B.id
+                 LEFT JOIN sys_org C ON A.org_id = C.id
+        WHERE  (A.org_id = #{orgId} OR C.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+          AND A.state = 1
+          AND A.is_delete = 0
+          AND B.login_date  &gt;= #{loginTime}
+        GROUP BY DATE_FORMAT(B.login_date, '%Y-%m-%d')
+    </select>
+
+    <select id="getTotalOfCoursesByOrgStatistics" resultType="com.joyfishs.dawa.statistics.domain.StatisticsByOrg">
+        SELECT D.id, D.name, COUNT(DISTINCT course_id) finishOfCourses
+        FROM xm_project_person_study_record A
+                 RIGHT JOIN xm_person B ON A.person_id = B.id
+                 LEFT JOIN sys_org D ON B.org_id = D.id
+        WHERE (B.org_id = #{orgId} OR D.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+          AND course_id IS NOT NULL
+          AND B.is_delete = 0
+        GROUP BY D.id
+        ORDER BY finishOfCourses DESC
+        LIMIT 10
+    </select>
+
+    <select id="getByTotalOfClassHoursByOrgStatistics" resultType="com.joyfishs.dawa.statistics.domain.StatisticsByOrg">
+        SELECT D.id, D.name, SUM(A.study_hours) totalClassHours
+        FROM xm_project_person_study_record A
+                 RIGHT JOIN xm_person B ON A.person_id = B.id
+                 LEFT JOIN sys_org D ON B.org_id = D.id
+        WHERE (B.org_id = #{orgId} OR D.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+          AND course_id IS NOT NULL
+          AND B.is_delete = 0
+        GROUP BY D.id
+        ORDER BY totalClassHours DESC
+        LIMIT 10
+    </select>
+
+    <select id="getTotalOfCoursesForPersonal" resultType="com.joyfishs.dawa.statistics.domain.DataStatisticsPersonal">
+        SELECT B.id                      personId,
+               B.name,
+               COUNT(DISTINCT course_id) finishOfCourses
+        FROM xm_project_person_study_record A
+                 RIGHT JOIN xm_person B ON A.person_id = B.id
+                 LEFT JOIN sys_org D ON B.org_id = D.id
+        WHERE (B.org_id = #{orgId} OR D.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+          AND B.is_delete = 0
+        GROUP BY B.id
+        ORDER BY finishOfCourses DESC
+        LIMIT 10
+    </select>
+
+    <select id="getYearClassHourForPersonal" resultType="com.joyfishs.dawa.statistics.domain.DataStatisticsPersonal">
+        SELECT B.id                        personId,
+               B.name,
+               IFNULL(SUM(study_hours), 0) yearClassHour
+        FROM xm_project_person_study_record A
+                 RIGHT JOIN xm_person B ON A.person_id = B.id
+                 LEFT JOIN sys_org D ON B.org_id = D.id
+        WHERE (B.org_id = #{orgId} OR D.pids LIKE CONCAT('%[', #{orgId}, ']%'))
+          AND B.is_delete = 0
+          AND YEAR(A.create_time) = YEAR(NOW())
+        GROUP BY B.id
+        ORDER BY yearClassHour DESC
+        LIMIT 10
+    </select>
+</mapper>

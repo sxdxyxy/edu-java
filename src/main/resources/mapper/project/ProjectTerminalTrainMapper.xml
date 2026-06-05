@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.project.mapper.ProjectTerminalTrainMapper">
+    <update id="batchDelete">
+        update xm_project_terminal_train set is_delete = 1, delete_by = #{userId}, delete_time = now()
+        where id in
+        <foreach item="item" collection="list" separator="," open="(" close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <select id="findList" resultType="com.joyfishs.dawa.project.domain.vo.ProjectList">
+        select id,
+                train_name  projectName,
+                train_sdate startDate,
+                train_edate endDate,
+                person_num,
+                (select count(1) from xm_project_terminal_train_sign s where s.train_id = t.id and t.is_delete = 0) signNum,
+                `status`,
+                later,
+                (select user_name from sys_user u where u.id = t.create_by) createBy,
+                project_type,
+                create_time createDate
+        from xm_project_terminal_train t
+        where is_delete = 0
+        <if test='orgIds != null and orgIds.size() > 0'>
+            and org_id in
+            <foreach item="item" collection="orgIds" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test='status != null'>
+            and status = #{status}
+        </if>
+        <if test='name != null and name != ""'>
+            and train_name like concat('%', #{name}, '%')
+        </if>
+        <if test='startDate != null'>
+            and train_sdate &gt; #{startDate}
+        </if>
+        <if test='endDate != null'>
+            and train_sdate &lt; #{endDate}
+        </if>
+        <if test='projectId != null'>
+            and t.id = #{projectId}
+        </if>
+        order by t.create_time desc
+    </select>
+
+    <select id="findByOrgId" resultType="com.joyfishs.dawa.project.entity.ProjectTerminalTrain">
+        select a.*,
+               ifnull((select enroll_status from xm_project_terminal_train_sign b
+                       where is_delete = 0 and b.train_id = a.id and person_id = #{personId}
+                       order by create_time desc limit 1), 2) enroll_status
+        from xm_project_terminal_train a
+        where a.is_delete = 0 and a.status > 1
+          and exists(select 1
+                     from xm_person p left join sys_org o on p.org_id = o.id
+                     where o.pids like concat('%[', a.org_id, ']%')
+                       and p.id = #{personId})
+    </select>
+
+
+</mapper>

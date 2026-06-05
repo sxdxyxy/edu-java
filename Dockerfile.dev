@@ -1,0 +1,15 @@
+# 使用官方的OpenJDK 8作为基础镜像
+FROM openjdk:8-jdk-alpine
+
+# 设置工作目录
+WORKDIR /app
+
+# 将构建好的JAR包复制到镜像中
+# 注意：构建时需确保 target 下已有编译好的 jar
+COPY target/safe-edu-*.jar /app/safe-edu.jar
+
+# 暴露端口（对应开发版规划的8002，容器内通常保持8000）
+EXPOSE 8000
+
+# 运行参数：指定生产环境配置并开启远程调试（可选）
+ENTRYPOINT ["java", "-jar", "safe-edu.jar"]

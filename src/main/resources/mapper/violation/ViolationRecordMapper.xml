@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.violation.mapper.ViolationRecordMapper">
+
+    <!-- 违章记录基础映射 -->
+    <resultMap id="ViolationRecordResultMap" type="com.joyfishs.dawa.violation.entity.ViolationRecord">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="projectId" column="project_id"/>
+        <result property="orgId" column="org_id"/>
+        <result property="violationType" column="violation_type"/>
+        <result property="description" column="description"/>
+        <result property="severity" column="severity"/>
+        <result property="score" column="score"/>
+        <result property="location" column="location"/>
+        <result property="evidencePhotos" column="evidence_photos"/>
+        <result property="status" column="status"/>
+        <result property="handlerId" column="handler_id"/>
+        <result property="processedAt" column="processed_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- 查询违章记分排行榜TOP10 -->
+    <select id="selectTop10ViolatorsByScore" resultType="map">
+        SELECT
+            su.id as userId,
+            su.name as userName,
+            SUM(v.score) as totalScore,
+            COUNT(v.id) as violationCount
+        FROM violation_records v
+        INNER JOIN xm_person p ON v.user_id = p.id
+        INNER JOIN sys_user su ON p.user_id = su.id
+        WHERE p.org_id = #{orgId}
+        AND v.status = 'processed'
+        GROUP BY v.user_id, su.id, su.name
+        ORDER BY totalScore DESC
+        LIMIT 10
+    </select>
+
+</mapper>

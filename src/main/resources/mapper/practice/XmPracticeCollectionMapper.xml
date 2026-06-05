@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.practice.mapper.XmPracticeCollectionMapper">
+
+    <select id="findCollectionList" resultType="com.joyfishs.dawa.answer.vo.QuestionVo">
+        SELECT b.id AS question_id, b.question_name, b.question_type, b.answerA, b.answerB, b.answerC, b.answerD, b.answerE, b.answerF,
+               b.answer_parse, b.right_answers, a.my_answers
+        FROM xm_practice_collection a
+                 LEFT JOIN xm_course_question b ON a.question_id = b.id
+        WHERE a.person_id = #{personId}
+          AND b.is_delete = 0
+        ORDER BY a.create_time DESC
+    </select>
+
+    <select id="getCollectionByQuestionId" resultType="com.joyfishs.dawa.answer.vo.QuestionVo">
+        SELECT b.id AS question_id, b.question_name, b.question_type, b.answerA, b.answerB, b.answerC, b.answerD, b.answerE, b.answerF,
+               b.answer_parse, b.right_answers, a.my_answers
+        FROM xm_practice_collection a
+                 LEFT JOIN xm_course_question b ON a.question_id = b.id
+        WHERE a.person_id = #{personId}
+          AND a.question_id = #{questionId}
+          AND b.is_delete = 0
+        ORDER BY a.create_time DESC
+        LIMIT 1
+    </select>
+</mapper>

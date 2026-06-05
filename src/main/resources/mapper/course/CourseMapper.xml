@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.course.mapper.CourseMapper">
+    <select id="getCourseList" resultType="com.joyfishs.dawa.course.entity.Course">
+        SELECT DISTINCT a.* FROM xm_course a
+        LEFT JOIN xm_course_tag b ON a.id = b.course_id
+        WHERE a.is_delete=0
+        <if test='t.tag != null and t.tag != ""'>
+            AND b.dict_value = #{t.tag}
+        </if>
+        <if test='t.courseName != null and t.courseName != ""'>
+            AND a.course_name like CONCAT('%',#{t.courseName},'%')
+        </if>
+        <if test='t.courseType != null and t.courseType != ""'>
+            AND a.course_type = #{t.courseType}
+        </if>
+        <if test='t.type != null and t.type != ""'>
+            AND a.type = #{t.type}
+        </if>
+        ORDER BY a.id desc
+    </select>
+
+    <select id="getListByIds" resultType="com.joyfishs.dawa.project.domain.vo.ProjectCourseList">
+        select id,
+        course_code courseCode,
+        course_name,
+        ifnull(hour, 0) courseHours,
+        (select ifnull(sum(learn_hours), 0)
+        from xm_course_relation_courseware a
+        left join xm_courseware b on a.courseware_id = b.id
+        where a.is_delete = 0 and b.is_delete = 0 and a.course_id = c.id) learnHours,
+        (select count(1) from xm_course_question where course_id = c.id and is_delete = 0) topicNumber
+        from xm_course c
+        where id in
+        <foreach item='item' collection='list' separator=',' open='(' close=')' index='index'>
+            #{item}
+        </foreach>
+        <if test='courseName != null and courseName.length() > 0'>
+            AND course_name like CONCAT('%',#{courseName},'%')
+        </if>
+    </select>
+
+    <select id="getCourseListByClass" resultType="com.joyfishs.dawa.course.entity.Course">
+        select distinct a.*
+        from xm_course a
+        left join xm_course_tag b on a.id = b.course_id and b.is_delete = 0
+        where a.is_delete = 0
+        and a.type = #{type}
+        <if test='classType != null and classType != ""'>
+            and a.course_type = #{classType}
+        </if>
+        <if test='name != null and name != ""'>
+            and a.course_name like concat('%', #{name}, '%')
+        </if>
+        <if test='tags != null and tags.size() > 0'>
+            and b.dict_value in
+            <foreach item='item' collection='tags' separator=',' open='(' close=')' index='index'>
+                #{item}
+            </foreach>
+        </if>
+        ORDER BY a.id DESC
+    </select>
+
+    <select id="getListByProjectId" resultType="com.joyfishs.dawa.project.domain.vo.ProjectCourseList">
+        SELECT c.id,
+               d.id                                                                               projectRelateId,
+               course_code                                                                        courseCode,
+               course_name,
+               ifnull(HOUR, 0)                                                                    courseHours,
+               (SELECT ifnull(sum(learn_hours), 0)
+                FROM xm_course_relation_courseware a
+                         LEFT JOIN xm_courseware b ON a.courseware_id = b.id
+                WHERE a.is_delete = 0
+                  AND b.is_delete = 0
+                  AND a.course_id = c.id)                                                         learnHours,
+               (SELECT count(1) FROM xm_course_question WHERE course_id = c.id AND is_delete = 0) topicNumber,
+               d.sort
+        FROM xm_course c
+                 INNER JOIN xm_project_relate d ON c.id = d.relate_ids
+        WHERE d.is_delete = 0
+          AND d.type = 2
+          AND d.project_id = #{projectId}
+        ORDER BY d.sort
+    </select>
+</mapper>

@@ -1,0 +1,188 @@
+server:
+  port: 8000
+  servlet:
+    context-path: /
+  tomcat:
+    uri-encoding: UTF-8
+    max-threads: 800
+    min-spare-threads: 30
+token:
+  header: Authorization
+  secret: ${TOKEN_SECRET}
+  expireTime: 1800000
+spring:
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  main:
+    allow-circular-references: true
+  messages:
+    basename: message/messages
+  encoding:
+    charset: UTF-8
+    enabled: true
+    force: true
+  jackson:
+    # 格式化设置
+    date-format: "yyyy-MM-dd HH:mm:ss"
+    # 时区
+    time-zone: "GMT+8"
+  profiles:
+    active: @profiles.active@
+    # 文件上传
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 200MB
+  freemarker:
+    enabled: true
+    cache: false
+    content-type: text/html
+    charset: utf-8
+    suffix: .ftl
+    request-context-attribute: request
+    expose-request-attributes: false
+    expose-session-attributes: false
+    allow-request-override: true
+    allow-session-override: true
+    expose-spring-macro-helpers: false
+    check-template-location: true
+    prefer-file-system-access: true
+    template-loader-path:
+      - classpath:/templates/
+    settings:
+      datetime_format: yyyy-MM-dd HH:mm:ss      # date 输出格式化
+      template_update_delay: 30m                # 模板引擎刷新时间
+      default_encoding: utf-8                   # 默认编码
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  #实体扫描，多个package用逗号或者分号分隔
+  typeAliasesPackage: com.joyfishs.**.domain
+  typeEnumsPackage: com.joyfishs.dawa.**
+  global-config:
+    #主键类型  0:"数据库ID自增", 1:"用户输入ID",2:"全局唯一ID (数字类型唯一ID)", 3:"全局唯一ID UUID";
+    id-type: 0
+    #字段策略 0:"忽略判断",1:"非 NULL 判断"),2:"非空判断"
+    field-strategy: 2
+    #驼峰下划线转换
+    db-column-underline: false
+    #刷新mapper 调试神器
+    refresh-mapper: false
+    #数据库大写下划线转换
+    #capital-mode: true
+    # Sequence序列接口实现类配置
+    #key-generator: com.baomidou.mybatisplus.incrementer.OracleKeyGenerator
+    #逻辑删除配置
+    logic-delete-value: -1
+    logic-not-delete-value: 0
+    #自定义填充策略接口实现
+    #meta-object-handler: com.baomidou.springboot.xxx
+    #自定义SQL注入器
+    #sql-injector: com.baomidou.mybatisplus.mapper.LogicSqlInjector
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    call-setters-on-nulls: true
+
+pagehelper:
+  helperDialect: mysql
+  reasonable: true
+  supportMethodsArguments: false
+  params: count=countSql
+
+knife4j:
+  enable: true
+  setting:
+    language: zh-CN
+    enableDocumentManage: true
+    enableVersion: false
+    enableReloadCacheParameter: false
+    enableAfterScript: true
+    enableFilterMultipartApiMethodType: POST
+    enableFilterMultipartApis: false
+    enableRequestCache: true
+    enableSwaggerModels: false
+    enableSearch: true
+    enableFooter: false
+    enableFooterCustom: true
+    footerCustomContent: Copyright  2024 子非鱼（湖北）信息科技有限公司(https://www.joyfishs.com/)
+  production: false
+  basic:
+    enable: ${KNIFE4J_BASIC_ENABLED:false}
+    username: ${KNIFE4J_BASIC_USERNAME}
+    password: ${KNIFE4J_BASIC_PASSWORD}
+# 防止XSS攻击
+xss:
+  # 过滤开关
+  enabled: true
+  # 排除链接（多个用逗号分隔）
+  excludes: /system/notice/*
+  # 匹配链接
+  urlPatterns: /system/*,/monitor/*,/tool/*
+
+#腾讯云对象存储
+cos:
+  secretId: ${COS_SECRET_ID}
+  secretKey: ${COS_SECRET_KEY}
+  region: 'ap-shanghai'
+  bucketName: 'safe-edu-1309460949'
+  domain: 'https://static.joyfishs.com/'
+oss:
+  downloadPath: ${OSS_DOWNLOAD_PATH:/tmp/downloads}
+
+tencent:
+  appId: ${TENCENT_APP_ID}
+  appSecret: ${TENCENT_APP_SECRET}
+  secretId: ${TENCENT_SECRET_ID}
+  secretKey: ${TENCENT_SECRET_KEY}
+  # 获取 Access Token 地址
+  getAccessTokenUrl: "https://miniprogram-kyc.tencentcloudapi.com/api/oauth2/access_token"
+  # 获取 SIGN ticket 地址
+  getSignTicketUrl: "https://miniprogram-kyc.tencentcloudapi.com/api/oauth2/api_ticket"
+  # 人脸识别上送身份信息地址
+  uploadFaceidUrl: "https://miniprogram-kyc.tencentcloudapi.com/api/server/getfaceid"
+  # 人脸识别 licence
+  licence: ${TENCENT_FACE_LICENCE}
+
+--- # sms 短信
+sms:
+  accessKeyId: ${SMS_ACCESS_KEY_ID}
+  accessKeySecret: ${SMS_ACCESS_KEY_SECRET}
+  signName: ${SMS_SIGN_NAME:子非鱼湖北信息科技}
+  sdkAppId: ${SMS_SDK_APP_ID:1400823707}
+
+vod:
+  secretId: ${VOD_SECRET_ID:AKIDvgCTVJuGMDoAG8l9HAnAIAm9G7j6F9n4}
+  secretKey: ${VOD_SECRET_KEY:BANO9fwykHZdS1LPEnbNzNZWDftsc7NN}
+  playKey: ${VOD_PLAY_KEY:0cY5XjlV5DW8ioJBWbmF}
+  appId: ${VOD_APP_ID:1309460949}
+  subAppId: ${VOD_SUB_APP_ID:1500019533}
+
+face:
+  accessKeyId: ${FACE_ACCESS_KEY_ID:AKIDvgCTVJuGMDoAG8l9HAnAIAm9G7j6F9n4}
+  accessKeySecret: ${FACE_ACCESS_KEY_SECRET:BANO9fwykHZdS1LPEnbNzNZWDftsc7NN}
+
+ocr:
+  accessKeyId: ${OCR_ACCESS_KEY_ID:AKIDvgCTVJuGMDoAG8l9HAnAIAm9G7j6F9n4}
+  accessKeySecret: ${OCR_ACCESS_KEY_SECRET:BANO9fwykHZdS1LPEnbNzNZWDftsc7NN}
+
+wx:
+  mp:
+    configs:
+      - appid: ${WX_MP_WEB_APPID}
+        secret: ${WX_MP_WEB_SECRET}
+        token:
+        aesKey:
+        platform: WEB
+      - appid: ${WX_MP_APP_APPID}
+        secret: ${WX_MP_APP_SECRET}
+        token:
+        aesKey:
+        platform: APP
+  miniapp:
+    configs:
+      - appid: ${WX_MINIAPP_APPID}
+        secret: ${WX_MINIAPP_SECRET}
+        token: #微信小程序消息服务器配置的token
+        aesKey: #微信小程序消息服务器配置的EncodingAESKey
+        msgDataFormat: JSON

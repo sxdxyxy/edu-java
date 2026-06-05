@@ -1,0 +1,35 @@
+server:
+  port: 888
+  servlet:
+    context-path: /api
+token:
+  header: Authorization
+  secret: ${TOKEN_SECRET_TEST}
+  expireTime: 1800000
+knife4j:
+  enable: true
+  setting:
+    enable-host: true
+    enable-host-text: "https://sts.test.joyfishs.com/api/"
+logging:
+  level:
+    com.joyfishs: debug
+    org.springframework: info
+spring:
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://172.25.148.3:3306/safe_train?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: safe_train
+    password: ${DB_PASSWORD_TEST}
+  redis:
+      host: 172.25.148.3
+      port: 6379
+      password: ${REDIS_PASSWORD_TEST}
+      timeout: 10s
+      lettuce:
+        pool:
+          min-idle: 0
+          max-idle: 8
+          max-active: 8
+          max-wait: -1ms

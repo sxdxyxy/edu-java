@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.answer.mapper.AnswerReportItemMapper">
+    <select id="listByReportId" resultType="com.joyfishs.dawa.answer.entity.AnswerReportItem">
+        SELECT a.*
+        FROM xm_answer_report_item a
+                 LEFT JOIN xm_course_question b ON a.question_id = b.id
+        WHERE a.report_id = #{reportId}
+        ORDER BY b.question_type, a.question_id
+    </select>
+
+    <select id="listResolutionByReportId" resultType="com.joyfishs.dawa.answer.vo.QuestionVo">
+            SELECT a.question_id, a.answer_time, a.my_answers, a.answer_type,
+                b.question_name, b.question_type, b.answerA, b.answerB, b.answerC, b.answerD, b.answerE, b.answerF,
+                b.answer_parse, b.right_answers
+            FROM xm_answer_report_item a
+            LEFT JOIN xm_course_question b ON a.question_id = b.id
+            WHERE a.report_id = #{reportId}
+                <if test='answerType != null '>
+                    AND a.answer_type = #{answerType}
+                </if>
+    </select>
+
+    <select id="getAccuracyRate" resultType="java.math.BigDecimal">
+        SELECT ROUND(
+                               (
+                                   SELECT COUNT(1)
+                                   FROM xm_answer_report_item i
+                                   WHERE i.question_id = #{questionId}
+                                     AND i.answer_type = 1
+                               ) / (
+                                   SELECT COUNT(1)
+                                   FROM xm_answer_report_item i
+                                   WHERE i.question_id = #{questionId}
+                                     AND i.answer_type != 0
+                               ) * 100, 2)
+    </select>
+
+    <select id="getWrongItem" resultType="string">
+        SELECT w.my_answers
+        FROM (
+                 SELECT COUNT(1), i.my_answers
+                 FROM xm_answer_report_item i
+                 WHERE i.question_id = #{questionId}
+                   AND i.answer_type = 2
+                 GROUP BY i.my_answers
+                 ORDER BY COUNT(1) DESC
+                 LIMIT 1
+             ) w
+    </select>
+
+    <select id="getAnswerTimeByPersonIdAndQuestionId" resultType="java.lang.Integer">
+        SELECT IFNULL(SUM(i.answer_time), 0)
+        FROM xm_answer_report r
+                 LEFT JOIN xm_answer_report_item i ON r.id = i.report_id
+        WHERE r.person_id = #{personId}
+          AND i.question_id = #{questionId}
+        ORDER BY r.create_time DESC
+        LIMIT 1
+    </select>
+
+    <delete id="deleteByReportId">
+        DELETE FROM xm_answer_report_item
+        WHERE report_id = #{reportId}
+    </delete>
+</mapper>

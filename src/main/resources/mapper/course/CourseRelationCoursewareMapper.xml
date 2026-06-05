@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.course.mapper.CourseRelationCoursewareMapper">
+
+    <select id="getCoursewareList" resultType="java.util.HashMap">
+        select a.course_id as courseId,
+               b.id as id,
+               b.name as name,
+               2 as type,
+               b.cover_path as coverPath,
+               b.video_path as videoPath,
+               b.m3u8 as m3u8,
+               b.file_id as fileId,
+               if(c.id is null, 0, 1) as status,
+               b.duration,
+               b.type as courseWay,
+               b.third_party_id thirdPartyId
+        from xm_course_relation_courseware a
+                 left join xm_courseware b on a.courseware_id = b.id
+                 left join xm_project_person_study_record c on a.course_id = c.course_id
+            and b.id = c.courseware_id
+            and project_id = #{projectId}
+            and person_id = #{personId}
+        where a.is_delete = 0
+          and b.is_delete = 0
+          and b.type in (1, 2)
+          and a.course_id = #{courseId}
+    </select>
+    <select id="getTotalHoursForCourse" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(IFNULL(b.learn_hours, 0)), 0) AS totalHours
+        FROM xm_course_relation_courseware a
+                 LEFT JOIN xm_courseware b ON a.courseware_id = b.id
+        WHERE a.is_delete = 0
+          AND b.is_delete = 0
+          AND a.course_id = #{courseId}
+    </select>
+
+    <select id="getTotalDuration" resultType="Long">
+        SELECT IFNULL(SUM(IFNULL(b.duration, 0)), 0) AS totalHours
+        FROM xm_course_relation_courseware a
+                 LEFT JOIN xm_courseware b ON a.courseware_id = b.id
+        WHERE a.is_delete = 0
+          AND b.is_delete = 0
+          AND a.course_id = #{courseId}
+    </select>
+
+    <select id="getTotalHours" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(IFNULL(b.learn_hours, 0)), 0) AS totalHours
+        FROM xm_course_relation_courseware a
+                 LEFT JOIN xm_courseware b ON a.courseware_id = b.id
+        WHERE a.is_delete = 0
+          AND b.is_delete = 0
+          AND a.course_id IN
+              (SELECT relate_ids FROM xm_project_relate c WHERE c.type = 2 AND project_id = #{projectId})
+    </select>
+</mapper>

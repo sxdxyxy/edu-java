@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.project.mapper.ProjectDictMapper">
+    <select id="findList" resultType="com.joyfishs.dawa.project.entity.ProjectDict">
+        select id,code,type,value,name from xm_project_dict where
+        is_delete = 0
+
+        <if test="type != null">
+            and type = #{type}
+        </if>
+        <if test="code != null and code != ''">
+            and code = #{code}
+        </if>
+        order by id desc
+    </select>
+</mapper>

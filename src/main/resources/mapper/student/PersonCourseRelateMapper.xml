@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.joyfishs.dawa.student.mapper.PersonCourseRelateMapper">
+
+    <select id="getRecord" resultType="com.joyfishs.dawa.student.entity.PersonCourseRelate">
+        select id,
+               project_id,
+               person_id,
+               is_sign,
+               learn_hours,
+               learn_score,
+               if_join_exam,
+               is_delete,
+               delete_time,
+               delete_by,
+               delete_reason,
+               update_time,
+               update_by,
+               create_time,
+               create_by,
+               remark
+        from xm_person_course_relate
+        where project_id = #{projectId}
+          and person_id = #{personId}
+          and is_delete = 0
+    </select>
+
+    <select id="getStudyRecord" resultType="com.joyfishs.dawa.student.domain.vo.StudyRecordVo">
+        select b.id, b.project_name,
+               (select count(1)
+                from xm_project_person_study_record d
+                where d.project_id = a.project_id and d.person_id = a.person_id) studyNum,
+               ifnull(max(c.update_time),max(c.create_time)) studyDate,
+               a.is_sign studyStatus
+        from xm_person_course_relate a
+                 left join xm_project b on a.project_id = b.id
+                 left join xm_project_person_study_record c on c.project_id = a.project_id
+        where a.is_delete = 0 and b.is_delete = 0 and c.is_delete = 0
+          and a.person_id = #{personId}
+        group by b.id
+        order by studyDate desc
+    </select>
+
+    <select id="getStudyStatus" resultType="Integer">
+        select
+            ifnull(((select count(distinct courseware_id)
+                     from xm_project_person_study_record
+                     where is_delete = 0 and status = 2 and project_id = #{projectId} and person_id = #{personId})
+                        /
+                    (select count(distinct b.courseware_id)
+                     from xm_project_relate a left join xm_course_relation_courseware b on a.relate_ids = b.course_id
+                                              left join xm_courseware z on  b.courseware_id = z.id
+                     where a.is_delete = 0 and b.is_delete = 0 and z.is_delete = 0 and z.type in (1,2)
+                       and a.type = 2 and a.project_id = #{projectId}) * 100),0) count
+    </select>
+
+    <select id="getStudyDate" resultType="Date">
+        select create_time
+        from xm_project_person_study_record
+        where project_id = #{projectId}
+        and person_id = #{personId}
+        and is_delete = 0
+        order by create_time
+        <if test='"start".equals(tag)'>
+            desc
+        </if>
+        limit 1
+    </select>
+    <select id="getGraduationList" resultType="java.util.HashMap">
+        SELECT a.id AS projectId,
+               a.project_name AS projectName,
+               b.person_id AS personId,
+               '已结业' AS result,
+               IF(a.train_way = 2 OR a.train_way = 4,
+                  (DATE_FORMAT((SELECT MAX(r.create_time)
+                                FROM xm_answer_report r
+                                WHERE a.id = r.project_id
+                                  AND b.person_id = r.person_id
+                                  AND r.type = 2
+                                  AND r.is_delete = 0
+                                  AND r.score >= a.pass_score), '%Y-%m-%d %H:%i:%S')),
+                  (DATE_FORMAT((SELECT MAX(r.create_time)
+                                FROM xm_project_person_study_record r
+                                WHERE r.is_delete = 0
+                                  AND r.person_id = b.person_id
+                                  AND r.project_id = a.id), '%Y-%m-%d %H:%i:%S'))) AS timeCompletion
+        FROM xm_project a
+                 LEFT JOIN xm_person_course_relate b ON a.id = b.project_id
+        WHERE a.is_delete = 0
+          AND b.is_delete = 0
+          AND b.person_id = #{personId}
+          AND b.is_sign = 3
+          AND (a.train_way IN (1,3) OR (a.train_way IN (2,4) AND EXISTS(SELECT 1
+                                                                        FROM xm_answer_report c
+                                                                        WHERE c.is_delete = 0
+                                                                          AND c.type = 2
+                                                                          AND c.score >= a.pass_score
+                                                                          AND c.person_id = b.person_id
+                                                                          AND c.project_id = a.id)))
+    </select>
+</mapper>
