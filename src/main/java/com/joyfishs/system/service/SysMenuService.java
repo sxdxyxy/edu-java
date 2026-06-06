@@ -328,7 +328,7 @@ public class SysMenuService extends ServiceImpl<SysMenuMapper, SysMenu> {
                 loginMenuTreeNode.setName(sysMenu.getCode());
                 loginMenuTreeNode.setPath(sysMenu.getRouter());
                 loginMenuTreeNode.setPid(sysMenu.getPid());
-                LoginMenuTreeNode.Meta mateItem = new LoginMenuTreeNode().new Meta();
+                LoginMenuTreeNode.Meta mateItem = new LoginMenuTreeNode.Meta();
                 mateItem.setTitle(sysMenu.getName());
                 //是否可见
                 mateItem.setShow(YesOrNoState.YES.getState() == sysMenu.getVisible());

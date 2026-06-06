@@ -29,6 +29,19 @@ spring:
     time-zone: "GMT+8"
   profiles:
     active: @profiles.active@
+  flyway:
+    # 启用 Flyway 自动管理 schema (启动时执行 db/migration 下的 V*.sql)
+    enabled: true
+    # 第一次启动时如果库里有表但没有 flyway_schema_history, 自动 baseline 到当前版本
+    baseline-on-migrate: true
+    # baseline 时打这个版本号, 之后只跑 > 这个版本号的 migration
+    baseline-version: 20260606
+    # migration 文件位置 (默认值, 显式写清楚)
+    locations: classpath:db/migration
+    # 表名前缀
+    table: flyway_schema_history
+    # 关闭 validation, 允许 migration 文件后续被修改 (生产环境应该开 validate)
+    validate-on-migrate: false
     # 文件上传
   servlet:
     multipart:

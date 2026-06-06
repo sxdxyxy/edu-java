@@ -55,7 +55,7 @@ public class LoginMenuTreeNode implements Serializable {
      * 路由元信息内部类
      */
     @Data
-    public class Meta implements Serializable {
+    public static class Meta implements Serializable {
         private static final long serialVersionUID = 1L;
 
         /**
