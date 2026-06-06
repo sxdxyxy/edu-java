@@ -2,6 +2,7 @@ package com.joyfishs.dawa.violation.controller;
 
 import com.github.pagehelper.PageInfo;
 import com.joyfishs.dawa.violation.entity.ViolationRecord;
+import com.joyfishs.dawa.violation.dto.ViolationAndDeductRequest;
 import com.joyfishs.dawa.violation.dto.ViolationAndDeductResult;
 import com.joyfishs.dawa.violation.dto.ViolationRecordResult;
 import com.joyfishs.dawa.violation.service.ViolationRecordService;
@@ -100,6 +101,37 @@ public class ViolationRecordController extends BaseController {
             Long operatorId = SecurityUtil.getUserId();
             ViolationAndDeductResult result = violationRecordService.recordViolationAndDeduct(
                     personId, projectId, violationCode, description, evidencePhotos, location, operatorId);
+            if (result == null || !result.getSuccess()) {
+                return AjaxResult.error(result != null ? result.getErrorMessage() : "处理失败");
+            }
+            return AjaxResult.success("违章已记录，积分已扣减", result);
+        } catch (Exception e) {
+            return AjaxResult.error("违章记录失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 违章即扣分（JSON Body 版本,前端 axios 传 JSON 时用这个）
+     * <p>
+     * 入参与 query 版本一致,只是走 application/json。
+     * </p>
+     */
+    @PostMapping("/violation-and-deduct-json")
+    @PreAuthorize("@ss.hasPermi('violation:edit')")
+    public AjaxResult<?> violationAndDeductJson(@RequestBody ViolationAndDeductRequest request) {
+        try {
+            if (request == null) {
+                return AjaxResult.error("请求体不能为空");
+            }
+            Long operatorId = SecurityUtil.getUserId();
+            ViolationAndDeductResult result = violationRecordService.recordViolationAndDeduct(
+                    request.getPersonId(),
+                    request.getProjectId(),
+                    request.getViolationCode(),
+                    request.getDescription(),
+                    request.getEvidencePhotos(),
+                    request.getLocation(),
+                    operatorId);
             if (result == null || !result.getSuccess()) {
                 return AjaxResult.error(result != null ? result.getErrorMessage() : "处理失败");
             }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.joyfishs.system.entity.BaseEntity;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -142,6 +143,18 @@ public class ViolationRecord extends BaseEntity {
      */
     @ApiModelProperty("创建时间")
     private Date createdAt;
+
+    /**
+     * 乐观锁版本号（防并发扣分扣错分）
+     * <p>
+     * 同一人员多条违章同时录入时,后到的 update 会失败抛
+     * {@link com.baomidou.mybatisplus.extension.plugins.handler.optimistic.OptimisticLockerInnerInterceptor}。
+     * 业务侧应捕获 {@code ObjectOptimisticLockingFailureException} 后重试。
+     * </p>
+     */
+    @Version
+    @ApiModelProperty("乐观锁版本号")
+    private Integer version;
 
     // ===== 扩展字段（从 sys_user 关联查询）=====
     /**

@@ -52,9 +52,18 @@ public class SysOrgService extends ServiceImpl<SysOrgMapper, SysOrg> {
                 Long currentOrgId = SecurityUtil.getOrgId();
                 queryWrapper.and(query -> query.eq(SysOrg::getCreateBy, SecurityUtil.getUserId()).or()
                         .eq(SysOrg::getId, currentOrgId).or().like(SysOrg::getPids, "[" + currentOrgId + "]"));
-            } else if (sysOrg.getOrgType() == 2){ // 查询项目范围,只能查看当前登录人所创建的项目及参与的项目
+            } else if (sysOrg.getOrgType() == 2){ // 查询项目范围:可查看 1)自己创建的 2)自己参与的 3)自己所在单位及其所有下属单位创建的
+                Long currentOrgId = SecurityUtil.getOrgId();
+                // 当前用户所在单位的 pids 链(向上) + 单位自身 id 的列表
+                // 用 sys_org 自己的 pids 字段做"祖先链路"匹配
+                String currentOrgPidPath = "[" + currentOrgId + "]";
+                // 通过 pids 包含 currentOrgId 的所有 org 视为"同单位体系"内的祖先单位
+                // 然后再查这些祖先单位下属的所有 org_type=2 项目
                 queryWrapper.and(query -> query.eq(SysOrg::getCreateBy, SecurityUtil.getUserId()).or()
-                        .inSql(SysOrg::getId, "select org_id from xm_person_org where person_id = " + SecurityUtil.getPersonId()));
+                        .inSql(SysOrg::getId, "select org_id from xm_person_org where person_id = " + SecurityUtil.getPersonId()).or()
+                        // 兜底:用户所在单位的所有下属项目(包含 pids 含当前单位 id 的项目,以及 pid 等于当前单位 id 的项目)
+                        .like(SysOrg::getPids, currentOrgPidPath).or()
+                        .eq(SysOrg::getPid, currentOrgId));
             }
         }
 

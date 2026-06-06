@@ -115,10 +115,11 @@ public class SafetyRetrainingController {
     @ApiOperation("完成再培训（通过/未通过）")
     public AjaxResult<ScoreChangeResult> completeRetraining(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "true") boolean passed) {
+            @RequestParam(defaultValue = "true") boolean passed,
+            @RequestParam(required = false) String remarks) {
         try {
             Long operatorId = SecurityUtil.getUserId();
-            retrainingService.completeRetraining(id, passed, operatorId);
+            retrainingService.completeRetraining(id, passed, operatorId, remarks);
             SafetyRetrainingRecord record = retrainingService.getById(id);
             // 返回积分变动结果
             if (passed && record != null) {

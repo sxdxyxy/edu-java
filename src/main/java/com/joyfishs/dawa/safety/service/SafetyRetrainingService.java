@@ -153,10 +153,15 @@ public class SafetyRetrainingService extends ServiceImpl<SafetyRetrainingRecordM
 
     /**
      * 完成再培训（通过/未通过）
+     *
+     * @param recordId   再培训记录ID
+     * @param passed     是否通过
+     * @param operatorId 操作人ID(管理员)
+     * @param remarks    备注(可选,前端"一键确认"Modal 用)
      */
     @Transactional(rollbackFor = Exception.class)
-    public ScoreChangeResult completeRetraining(Long recordId, boolean passed, Long operatorId) {
-        log.info("完成安全再培训: recordId={}, passed={}", recordId, passed);
+    public ScoreChangeResult completeRetraining(Long recordId, boolean passed, Long operatorId, String remarks) {
+        log.info("完成安全再培训: recordId={}, passed={}, operatorId={}", recordId, passed, operatorId);
 
         SafetyRetrainingRecord record = getById(recordId);
         if (record == null) {
@@ -176,6 +181,11 @@ public class SafetyRetrainingService extends ServiceImpl<SafetyRetrainingRecordM
             record.setStatus(SafetyRetrainingRecord.STATUS_FAILED);
         }
         record.setEndDate(new Date());
+        // 备注合并(原备注 + 新备注,留痕)
+        if (remarks != null && !remarks.isEmpty()) {
+            String existing = record.getRemarks();
+            record.setRemarks((existing != null ? existing + " | " : "") + remarks);
+        }
         updateById(record);
 
         if (scoreResult != null) {
@@ -186,6 +196,13 @@ public class SafetyRetrainingService extends ServiceImpl<SafetyRetrainingRecordM
         }
 
         return scoreResult;
+    }
+
+    /**
+     * 兼容旧签名 (无 remarks)
+     */
+    public ScoreChangeResult completeRetraining(Long recordId, boolean passed, Long operatorId) {
+        return completeRetraining(recordId, passed, operatorId, null);
     }
 
     /**

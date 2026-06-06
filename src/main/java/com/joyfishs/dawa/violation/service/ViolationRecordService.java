@@ -3,6 +3,8 @@ package com.joyfishs.dawa.violation.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.joyfishs.dawa.safety.dto.ScoreChangeResult;
+import com.joyfishs.dawa.safety.entity.AppealRecord;
+import com.joyfishs.dawa.safety.service.AppealRecordService;
 import com.joyfishs.dawa.safety.service.SafetyPostDeductService;
 import com.joyfishs.dawa.safety.service.SafetyRetrainingService;
 import com.joyfishs.dawa.safety.service.SafetyScoreService;
@@ -81,6 +83,9 @@ public class ViolationRecordService extends ServiceImpl<ViolationRecordMapper, V
     @Lazy
     private SafetyNotificationService notificationService;
 
+    @Autowired
+    @Lazy
+    private AppealRecordService appealRecordService;
     /**
      * 根据用户 ID 查询违章记录
      */
@@ -288,7 +293,14 @@ public class ViolationRecordService extends ServiceImpl<ViolationRecordMapper, V
         if (scoreResult.getRetrainingRecordId() != null) {
             violation.setRetrainingRecordId(scoreResult.getRetrainingRecordId());
         }
-        updateById(violation);
+        // @Version 乐观锁:并发扣分时,第二个 update 会失败抛 OptimisticLockingFailureException
+        try {
+            updateById(violation);
+        } catch (org.springframework.dao.OptimisticLockingFailureException oe) {
+            log.error("乐观锁冲突,扣分结果回填失败: violationId={}, personId={}",
+                    violation.getId(), personId, oe);
+            // 不阻断后续流程,扣分和安全码计算已经完成
+        }
 
         // 8. 并行触发后续影响
         postDeductService.triggerAll(
@@ -372,6 +384,7 @@ public class ViolationRecordService extends ServiceImpl<ViolationRecordMapper, V
      * 发起申诉（作业人员操作）
      * <p>
      * 申诉不阻断扣分生效，违章状态变为 appealed。
+     * 同时在 t_safety_appeal_record 表创建一条申诉记录,供后续审批追溯。
      * </p>
      *
      * @param violationId    违章记录ID
@@ -385,23 +398,28 @@ public class ViolationRecordService extends ServiceImpl<ViolationRecordMapper, V
         if (violation == null) {
             throw new RuntimeException("违章记录不存在");
         }
-        
+
         // 只有 pending 状态的记录可以发起申诉
         if (!"pending".equals(violation.getStatus())) {
             throw new RuntimeException("该记录当前状态不支持申诉");
         }
-        
-        // 检查是否已有申诉（防止重复提交）
-        // TODO: 后续可改用 t_safety_appeal_record 表查询
-        
-        violation.setStatus("appealed");
-        updateById(violation);
-        
+
+        // 在 t_safety_appeal_record 表创建申诉记录（service 内部已含 "已存在则拒绝重复提交" 逻辑）
+        if (violation.getPersonId() == null) {
+            // 老数据没 personId,fallback 用 userId
+            log.warn("违章记录缺失 person_id, fallback 用 userId: violationId={}", violationId);
+        }
+        appealRecordService.createAppeal(
+                violationId,
+                violation.getPersonId() != null ? violation.getPersonId() : violation.getUserId(),
+                appealReason,
+                appealEvidence);
+
         // 申诉中不计入记分，所以也要重新评估安全码
         if (violation.getUserId() != null) {
             safetyCodeService.reevaluateColor(violation.getUserId(), violation.getProjectId(), null, null);
         }
-        
+
         log.info("申诉发起成功: violationId={}, personId={}, reason={}", violationId, violation.getPersonId(), appealReason);
         return violation;
     }
@@ -411,6 +429,10 @@ public class ViolationRecordService extends ServiceImpl<ViolationRecordMapper, V
      * <p>
      * 通过时：返还积分 + 更新违章状态为 appeal_approved + 刷新安全码 + 通知
      * 驳回时：保持违章状态为 appeal_rejected + 通知
+     * </p>
+     * <p>
+     * 实现说明：实际审批逻辑委托给 {@link com.joyfishs.dawa.safety.service.AppealRecordService}，
+     * 后者会同步更新 t_safety_appeal_record 表（审批结果/审批人/积分返还时间等）。
      * </p>
      *
      * @param violationId   违章记录ID
@@ -430,53 +452,25 @@ public class ViolationRecordService extends ServiceImpl<ViolationRecordMapper, V
             throw new RuntimeException("该记录不处于申诉状态");
         }
 
-        String newStatus;
-        int scoreRestored = 0;
+        // 找到对应的 t_safety_appeal_record 记录
+        AppealRecord appeal = appealRecordService
+                .listByPersonId(violation.getPersonId() != null ? violation.getPersonId() : violation.getUserId())
+                .stream()
+                .filter(a -> violationId.equals(a.getViolationRecordId()))
+                .filter(a -> AppealRecord.RESULT_PENDING.equals(a.getReviewResult()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("未找到对应的待审批申诉记录"));
 
-        if (approved) {
-            // 申诉通过：返还积分
-            newStatus = "appeal_approved";
-            scoreRestored = violation.getDeductAmount() != null ? violation.getDeductAmount() : 0;
-
-            if (scoreRestored > 0 && violation.getPersonId() != null) {
-                ScoreChangeResult scoreResult = safetyScoreService.restoreScore(
-                        violation.getPersonId(),
-                        scoreRestored,
-                        "申诉通过，积分返还",
-                        handlerId);
-
-                if (scoreResult != null) {
-                    // 并行触发：刷新安全码 + 发送通知
-                    postDeductService.refreshSafetyCode(
-                            violation.getPersonId(), violation.getProjectId(), scoreResult.getColor());
-                    notificationService.sendAppealResultNotification(violation.getPersonId(), true, remarks);
-
-                    log.info("申诉通过，积分已返还: violationId={}, personId={}, scoreRestored={}, newScore={}, color={}",
-                            violationId, violation.getPersonId(), scoreRestored,
-                            scoreResult.getAfterScore(), scoreResult.getColor());
-                }
-            } else {
-                notificationService.sendAppealResultNotification(violation.getPersonId(), true, remarks);
-            }
-        } else {
-            // 申诉驳回：维持原判
-            newStatus = "appeal_rejected";
-            notificationService.sendAppealResultNotification(violation.getPersonId(), false, remarks);
-            log.info("申诉驳回: violationId={}, personId={}", violationId, violation.getPersonId());
-        }
-
-        violation.setStatus(newStatus);
-        violation.setHandlerId(handlerId);
-        violation.setProcessedAt(new Date());
-        violation.setRemark(remarks);
-        updateById(violation);
+        // 委托 AppealRecordService 完成审批（更新 t_safety_appeal_record + 返还积分 + 通知）
+        appealRecordService.reviewAppeal(appeal.getId(), handlerId, approved, remarks);
 
         // 重新评估安全码（积分已变更，需刷新颜色）
         if (violation.getUserId() != null) {
             safetyCodeService.reevaluateColor(violation.getUserId(), violation.getProjectId(), null, null);
         }
 
-        return violation;
+        // 重新查询违章记录(appealRecordService 已改 status)
+        return getById(violationId);
     }
 
     /**
