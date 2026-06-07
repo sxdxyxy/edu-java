@@ -14,8 +14,8 @@
         <result property="validFrom" column="valid_from"/>
         <result property="validTo" column="valid_to"/>
         <result property="qrCodeData" column="qr_code_data"/>
-        <result property="createdAt" column="created_at"/>
-        <result property="updatedAt" column="updated_at"/>
+        <result property="createdAt" column="create_time"/>
+        <result property="updatedAt" column="update_time"/>
     </resultMap>
 
     <!-- 统计指定组织今天新增的安全码数量 -->
@@ -24,7 +24,7 @@
         FROM safety_codes sc
         INNER JOIN xm_person p ON sc.user_id = p.id
         WHERE p.org_id = #{orgId}
-        AND DATE(sc.created_at) = CURDATE()
+        AND DATE(sc.create_time) = CURDATE()
     </select>
 
     <!-- 统计指定组织有效安全码数量 -->
