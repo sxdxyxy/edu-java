@@ -30,4 +30,9 @@ public interface SafetyCodeMapper extends BaseMapper<SafetyCode> {
      * 统计指定组织过期安全码数量
      */
     Long countExpiredCodesByOrg(Long orgId);
+
+    /**
+     * 统计指定组织即将到期安全码数量 (90 天内到期, 0 ≤ 剩余天数 ≤ 90)
+     */
+    Long countExpiringCodesByOrg(Long orgId);
 }
