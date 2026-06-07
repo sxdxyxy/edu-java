@@ -21,19 +21,21 @@
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
 
-    <!-- 查询违章记分排行榜TOP10 -->
+    <!-- 查询违章记分排行榜TOP10 (含所属机构名) -->
     <select id="selectTop10ViolatorsByScore" resultType="map">
         SELECT
             su.id as userId,
             su.name as userName,
+            so.name as orgName,
             SUM(v.score) as totalScore,
             COUNT(v.id) as violationCount
         FROM violation_records v
         INNER JOIN xm_person p ON v.user_id = p.id
         INNER JOIN sys_user su ON p.user_id = su.id
+        LEFT JOIN sys_org so ON p.org_id = so.id
         WHERE p.org_id = #{orgId}
         AND v.status = 'processed'
-        GROUP BY v.user_id, su.id, su.name
+        GROUP BY v.user_id, su.id, su.name, so.name
         ORDER BY totalScore DESC
         LIMIT 10
     </select>
