@@ -258,6 +258,7 @@ public class DataStatisticsService extends ServiceImpl<DataStatisticsMapper, Per
             Map<String, Object> item = new HashMap<>();
             item.put("userId", violator.get("userId"));
             item.put("userName", violator.get("userName"));
+            item.put("orgName", violator.get("orgName"));
             item.put("totalScore", violator.get("totalScore"));
             item.put("violationCount", violator.get("violationCount"));
             result.add(item);
