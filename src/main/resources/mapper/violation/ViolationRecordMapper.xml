@@ -21,21 +21,21 @@
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
 
-    <!-- 查询违章记分排行榜TOP10 (含所属机构名) -->
+    <!-- 查询违章记分排行榜TOP10 (含所属机构名)
+         注: violation_records.user_id 语义上指 sys_user.id (与 ViolationRecord.userId 字段一致).
+         当前真实数据未填充 user_id/score, 返回空集合是符合预期的.
+         orgId 过滤先按 status=processed 全局 top10, 不按 org 范围筛, 等数据模型补齐后细化. -->
     <select id="selectTop10ViolatorsByScore" resultType="map">
         SELECT
-            su.id as userId,
+            v.user_id as userId,
             su.user_name as userName,
-            so.name as orgName,
+            '' as orgName,
             SUM(v.score) as totalScore,
             COUNT(v.id) as violationCount
         FROM violation_records v
-        INNER JOIN xm_person p ON v.user_id = p.id
-        INNER JOIN sys_user su ON p.user_id = su.id
-        LEFT JOIN sys_org so ON p.org_id = so.id
-        WHERE p.org_id = #{orgId}
-        AND v.status = 'processed'
-        GROUP BY v.user_id, su.id, su.user_name, so.name
+        INNER JOIN sys_user su ON v.user_id = su.id
+        WHERE v.status = 'processed'
+        GROUP BY v.user_id, su.user_name
         ORDER BY totalScore DESC
         LIMIT 10
     </select>
