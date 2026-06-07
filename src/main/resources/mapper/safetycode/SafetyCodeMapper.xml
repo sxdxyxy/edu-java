@@ -39,11 +39,22 @@
 
     <!-- 统计指定组织过期安全码数量 -->
     <select id="countExpiredCodesByOrg" parameterType="java.lang.Long" resultType="java.lang.Long">
-        SELECT COUNT(1) 
+        SELECT COUNT(1)
         FROM safety_codes sc
         INNER JOIN xm_person p ON sc.user_id = p.id
         WHERE p.org_id = #{orgId}
         AND sc.status = 'expired'
+    </select>
+
+    <!-- 统计指定组织即将到期安全码数量 (90 天内到期, 0 ≤ 剩余天数 ≤ 90) -->
+    <select id="countExpiringCodesByOrg" parameterType="java.lang.Long" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM safety_codes sc
+        INNER JOIN xm_person p ON sc.user_id = p.id
+        WHERE p.org_id = #{orgId}
+        AND sc.status = 'active'
+        AND sc.valid_to >= NOW()
+        AND sc.valid_to &lt; DATE_ADD(NOW(), INTERVAL 90 DAY)
     </select>
 
 </mapper>
