@@ -198,24 +198,27 @@ public class DataStatisticsService extends ServiceImpl<DataStatisticsMapper, Per
     }
     
     /**
-     * T20: 安全码统计
+     * T20: 安全码统计 (三段式: 绿/黄/红, 三色数字互斥)
      */
     public Map<String, Object> getSafetyCodeStatistics(Long orgId) {
         Map<String, Object> result = new HashMap<>();
-        
-        // 今日新增安全码数量
+
+        // 今日新增
         long todayNewCount = safetyCodeService.countTodayNewCodes(orgId);
-        
-        // 有效安全码数量
-        long validCount = safetyCodeService.countValidCodes(orgId);
-        
-        // 过期安全码数量
-        long expiredCount = safetyCodeService.countExpiredCodes(orgId);
-        
+
+        // 原始计数 (注意: countValidCodes 包含全部 active 码, 包括 0-90 天到期的 yellow 范围)
+        long totalActiveCount = safetyCodeService.countValidCodes(orgId);
+        long yellowCount     = safetyCodeService.countExpiringCodes(orgId);  // 0 ≤ 剩余天数 < 90
+        long redCount        = safetyCodeService.countExpiredCodes(orgId);
+
+        // 绿码 = 全部 active - 即将到期 (yellow) (互斥, 三色数字加起来 = total)
+        long greenCount = totalActiveCount - yellowCount;
+
         result.put("todayNew", todayNewCount);
-        result.put("valid", validCount);
-        result.put("expired", expiredCount);
-        
+        result.put("greenCount", greenCount);
+        result.put("yellowCount", yellowCount);
+        result.put("redCount", redCount);
+
         return result;
     }
 
