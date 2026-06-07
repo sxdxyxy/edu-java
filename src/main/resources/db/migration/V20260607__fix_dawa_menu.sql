@@ -13,15 +13,21 @@
 -- =====================================================
 
 -- 1. 补 dawa 顶级菜单(若不存在)
+--    component=RouteView: 前端 generator-routers.js 已注册此 key;
+--    写 'Layout' 会触发 fallback 路径 `() => import('@/views/Layout')` 加载失败,
+--    进而整个 dawa 路由树都无法渲染
 SET @dawa_exists := (SELECT COUNT(*) FROM sys_menu WHERE code = 'dawa');
 SET @sql := IF(
     @dawa_exists = 0,
-    'INSERT INTO sys_menu (name, code, int_code, pid, type, router, component, permission, icon, visible, create_time, is_delete) VALUES (''智理安全'', ''dawa'', 20, 0, 0, ''/dawa'', ''Layout'', '''', ''safety-certificate'', 1, NOW(), 0)',
+    'INSERT INTO sys_menu (name, code, int_code, pid, type, router, component, permission, icon, visible, create_time, is_delete) VALUES (''智理安全'', ''dawa'', 20, 0, 0, ''/dawa'', ''RouteView'', '''', ''safety-certificate'', 1, NOW(), 0)',
     'SELECT 1'
 );
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- 1b. 兜底:历史数据里 dawa.component 写成 Layout,纠正成 RouteView
+UPDATE sys_menu SET component = 'RouteView' WHERE code = 'dawa' AND component = 'Layout';
 
 -- 2. 取 dawa id
 SET @dawa_id := (SELECT id FROM sys_menu WHERE code = 'dawa' LIMIT 1);
