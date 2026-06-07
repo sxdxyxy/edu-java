@@ -569,6 +569,22 @@ public class SafetyCodeService extends ServiceImpl<SafetyCodeMapper, SafetyCode>
     }
 
     /**
+     * 统计指定组织即将到期安全码数量 (0 ≤ 剩余天数 < 90)
+     */
+    @Transactional(readOnly = true)
+    public long countExpiringCodes(Long orgId) {
+        if (orgId == null) {
+            // 当 orgId 为 null 时, 统计所有即将到期的安全码
+            LambdaQueryWrapper<SafetyCode> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(SafetyCode::getStatus, SafetyCode.STATUS_ACTIVE);
+            wrapper.ge(SafetyCode::getValidTo, java.time.LocalDateTime.now());
+            wrapper.lt(SafetyCode::getValidTo, java.time.LocalDateTime.now().plusDays(90));
+            return count(wrapper);
+        }
+        return baseMapper.countExpiringCodesByOrg(orgId);
+    }
+
+    /**
      * 核验安全码
      * <p>
      * 根据安全码字符串进行核验
