@@ -26,14 +26,23 @@ public class PlanDashboardService {
     public PlanDashboardDTO getDashboard(Long planId) {
         String cacheKey = DASHBOARD_CACHE_KEY + planId;
 
-        PlanDashboardDTO cached = redisCache.getCacheObject(cacheKey);
-        if (cached != null) {
-            log.debug("Dashboard cache hit for planId: {}", planId);
-            return cached;
+        // D3-B: Redis 故障不应阻塞驾驶舱 — 失败时跳过缓存, 直接聚合
+        try {
+            PlanDashboardDTO cached = redisCache.getCacheObject(cacheKey);
+            if (cached != null) {
+                log.debug("Dashboard cache hit for planId: {}", planId);
+                return cached;
+            }
+        } catch (Exception e) {
+            log.warn("Dashboard redis read failed for planId={}, fallback to DB", planId, e);
         }
 
         PlanDashboardDTO dto = aggregateDashboard(planId);
-        redisCache.setCacheObject(cacheKey, dto, CACHE_MINUTES * 60, java.util.concurrent.TimeUnit.SECONDS);
+        try {
+            redisCache.setCacheObject(cacheKey, dto, CACHE_MINUTES * 60, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.warn("Dashboard redis write failed for planId={}", planId, e);
+        }
         return dto;
     }
 

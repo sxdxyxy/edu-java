@@ -18,6 +18,9 @@ public class SysRole extends BaseEntity {
     public static final Long PLATFORM_MANAGER_ROLE = 2L;
 
     public static final Long STUDENT_ROLE = 3L;
+    // D6-2: 公司管理员 (sys_role.code='company_manager'), id=9
+    //   跟 DB 对齐, 数据按 org_id 隔离, 见 dawaRole.js COMPANY_ADMIN
+    public static final Long COMPANY_MANAGER_ROLE = 9L;
 
     /**
      * 角色ID

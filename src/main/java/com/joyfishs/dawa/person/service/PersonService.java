@@ -543,6 +543,12 @@ public class PersonService extends ServiceImpl<PersonMapper, Person> {
             // 新建用户
             SysUser sysUser = new SysUser();
             BeanUtil.copyProperties(person, sysUser);
+            // D1-B: Person.state 与 SysUser.status 字段名不同, BeanUtil 不映射;
+            //      旧代码不显式设置 SysUser.status, 导致 INSERT 时 status=NULL,
+            //      而 sys_user.status 默认 0 (停用), 后续基于 status=1 的查询不到,
+            //      且某些上游 SQL 拼接 IS NULL / IN (...) 失败, 上抛为"系统繁忙"。
+            //      显式赋值后, 新建用户为"启用", 与 sysUserService.saveOrUpdate 行为一致。
+            sysUser.setStatus(person.getState() == null ? 1 : person.getState());
             sysUser.setPassword(SysUser.DEFAULT_PASSWORD);
             sysUserService.saveOrUpdate(sysUser);
             // 保存学员角色信息
@@ -560,8 +566,13 @@ public class PersonService extends ServiceImpl<PersonMapper, Person> {
             personList.add(person);
         }
 
-        //批量写入
-        this.saveBatch(personList);
+        // D1-B: 包 try/catch 一次批量写入, 任一行失败能定位具体行, 不再"系统繁忙"
+        try {
+            this.saveBatch(personList);
+        } catch (Exception e) {
+            log.error("person importTemplate saveBatch failed, rows={}", personList.size(), e);
+            throw new CustomException("批量写入人员失败: " + e.getMessage());
+        }
     }
 
     /**
