@@ -13,7 +13,6 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,7 +29,6 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@Component
 @RequestMapping("/safety/retraining")
 @Api(tags = "安全再培训管理")
 

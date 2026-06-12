@@ -22,9 +22,12 @@ spring:
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3308/safe_train?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
-    username: safe_edu
-    password: ${MYSQL_PASSWORD:safeedu123}
+    # ⚠️ dev-sts 专用:db 名用 safe_train_v3,与生产 safe_train 严格区分
+    # 容器内运行:走 docker 网络 safe-edu-v3-db:3306
+    # 宿主机直连:走 127.0.0.1:3308 (端口映射)
+    url: jdbc:mysql://127.0.0.1:3308/safe_train_v3?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ${MYSQL_PASSWORD:${DB_PASSWORD_DEV:safeedu123}}
   redis:
       host: 127.0.0.1
       port: 16380
@@ -36,3 +39,7 @@ spring:
           max-idle: 8
           max-active: 8
           max-wait: -1ms
+# dev-sts 闸机回调:容器内指向同源 /api,实际回调由前端调用后端(后续可改成业务域)
+safety:
+  gate:
+    callback-url: http://127.0.0.1:8091/api/access/gate/callback

@@ -316,18 +316,26 @@ public class ViolationRecordController extends BaseController {
             @SuppressWarnings("unchecked")
             List<Long> ids = (List<Long>) params.get("ids");
             String status = (String) params.get("status");
-            Long handlerId = (Long) params.get("handlerId");
-            
+            // JSON 数字反序列化默认为 Integer,显式转 Long 避免 ClassCastException
+            Object rawHandlerId = params.get("handlerId");
+            if (rawHandlerId == null) {
+                return AjaxResult.error("请指定处理人");
+            }
+            Long handlerId;
+            if (rawHandlerId instanceof Number) {
+                handlerId = ((Number) rawHandlerId).longValue();
+            } else if (rawHandlerId instanceof String) {
+                handlerId = Long.parseLong((String) rawHandlerId);
+            } else {
+                return AjaxResult.error("处理人 ID 类型不合法");
+            }
+
             if (ids == null || ids.isEmpty()) {
                 return AjaxResult.error("请选择要处理的违章记录");
             }
-            
+
             if (status == null || status.trim().isEmpty()) {
                 return AjaxResult.error("请指定处理状态");
-            }
-            
-            if (handlerId == null) {
-                return AjaxResult.error("请指定处理人");
             }
             
             boolean result = violationRecordService.batchProcessViolations(ids, handlerId, status);

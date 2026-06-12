@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.joyfishs.dawa.safety.qrcode.QrCodeStorage;
 import com.joyfishs.dawa.safetycode.entity.SafetyCode;
 import com.joyfishs.dawa.safetycode.service.SafetyCodeService;
 import com.joyfishs.system.annotation.Log;
@@ -49,9 +50,12 @@ import javax.validation.Valid;
 public class SafetyCodeController extends BaseController {
 
     private final SafetyCodeService safetyCodeService;
+    // D6: 用于列表展示时二维码懒加载 (DB 未存时兜底生成, 但正常情况直接读 qrCodeData 字段)
+    private final QrCodeStorage qrCodeStorage;
 
-    public SafetyCodeController(SafetyCodeService safetyCodeService) {
+    public SafetyCodeController(SafetyCodeService safetyCodeService, QrCodeStorage qrCodeStorage) {
         this.safetyCodeService = safetyCodeService;
+        this.qrCodeStorage = qrCodeStorage;
     }
 
     /**
@@ -331,21 +335,32 @@ public class SafetyCodeController extends BaseController {
     }
 
     /**
-     * 为列表中的安全码生成二维码
+     * 为列表中的安全码补全二维码 URL
      * <p>
-     * 保持二维码生成逻辑仍保留在 Controller，因为这是展示层逻辑，只在返回前端展示需要
+     * D6 改造: 不再每次重生成 base64. 优先从 qrCodeData 字段读 (DB 已存),
+     * 字段为空时 (老数据 / 早期生成) 才走 QrCodeStorage 兜底生成一次.
      * </p>
      */
     private void generateQrCodeForList(List<SafetyCode> list) {
-        cn.hutool.extra.qrcode.QrConfig config = new cn.hutool.extra.qrcode.QrConfig(150, 150);
         for (SafetyCode code : list) {
+            if (com.joyfishs.utils.StringUtils.isEmpty(code.getCode())) {
+                continue;
+            }
+            // 已有 URL (新数据) 直接用
+            if (com.joyfishs.utils.StringUtils.isNotEmpty(code.getQrCodeData())) {
+                code.setQrCode(code.getQrCodeData());
+                continue;
+            }
+            // 旧数据兜底: 生成一次并存到 qrCodeData (供下次列表直接读)
+            // 注意: 这里不写回 DB, 因为此方法在 list 请求路径上, 写 DB 会让 list 变慢
+            // 真正持久化靠 generateSafetyCode (新数据都带 URL)
             try {
-                if (com.joyfishs.utils.StringUtils.isNotEmpty(code.getCode())) {
-                    String base64QrCode = cn.hutool.extra.qrcode.QrCodeUtil.generateAsBase64(code.getCode(), config, "png");
-                    code.setQrCode("data:image/png;base64," + base64QrCode);
+                String url = qrCodeStorage.storeAndGetUrl(code.getCode(), 150, 150, "safety-code");
+                if (com.joyfishs.utils.StringUtils.isNotEmpty(url)) {
+                    code.setQrCode(url);
                 }
             } catch (Exception e) {
-                log.warn("Failed to generate QR code for {}", code.getCode(), e);
+                log.warn("Failed to fallback-generate QR for code {}", code.getCode(), e);
             }
         }
     }

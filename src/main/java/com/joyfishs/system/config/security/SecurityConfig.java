@@ -142,6 +142,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/sys/oss/show/**").permitAll()
                 // 档案二维码公开访问
                 .antMatchers("/safetySupervision/archives/config/data/qrcode/**").permitAll()
+                // D6: dev-sts 本地二维码静态目录公开访问 (生产走 OSS 不需要)
+                .antMatchers("/qrcode/**").permitAll()
 
                 .antMatchers("/sys/ueditor/config").permitAll()
                 // 获取短信验证码接口

@@ -6,6 +6,8 @@ import com.joyfishs.dawa.safety.dto.AdmissionCheckResult;
 import com.joyfishs.dawa.safety.entity.CourseAdmissionRule;
 import com.joyfishs.dawa.safety.entity.SafetyScoreAccount;
 import com.joyfishs.dawa.student.service.StudentCourseListService;
+import com.joyfishs.dawa.person.entity.Person;
+import com.joyfishs.dawa.person.service.PersonService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -38,6 +40,9 @@ public class AdmissionCheckService {
 
     @Autowired
     private QualificationService qualificationService;
+
+    @Autowired
+    private PersonService personService;
 
     @Autowired
     @Lazy
@@ -168,7 +173,10 @@ public class AdmissionCheckService {
         String requiredCertType = rule.getRuleValue();
         String certStatus = rule.getRuleCondition(); // cert_valid, cert_expiring, cert_expired
 
-        List<Qualification> qualifications = qualificationService.listByUserId(null); // TODO: 需要通过personId获取userId
+        Long userId = resolveUserIdByPersonId(personId);
+        List<Qualification> qualifications = (userId == null)
+                ? java.util.Collections.emptyList()
+                : qualificationService.listByUserId(userId);
         if (qualifications == null || qualifications.isEmpty()) {
             if ("cert_valid".equals(certStatus) || "cert_expiring".equals(certStatus)) {
                 return new RuleCheckResult(false, "缺少必要的特种作业证书");
@@ -178,6 +186,22 @@ public class AdmissionCheckService {
         // TODO: 实现证书状态检查逻辑
 
         return new RuleCheckResult(true, null);
+    }
+
+    /**
+     * 解析 personId → userId. 找不到 person 记录或该 person 未绑定 user 时返回 null(此时按"无资质"处理)
+     */
+    private Long resolveUserIdByPersonId(Long personId) {
+        if (personId == null) {
+            return null;
+        }
+        try {
+            Person person = personService.getById(personId);
+            return (person == null) ? null : person.getUserId();
+        } catch (Exception e) {
+            log.warn("resolveUserIdByPersonId 失败: personId={}", personId, e);
+            return null;
+        }
     }
 
     /**

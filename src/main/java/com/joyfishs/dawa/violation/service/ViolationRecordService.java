@@ -294,10 +294,12 @@ public class ViolationRecordService extends ServiceImpl<ViolationRecordMapper, V
             violation.setRetrainingRecordId(scoreResult.getRetrainingRecordId());
         }
         // @Version 乐观锁:并发扣分时,第二个 update 会失败抛 OptimisticLockingFailureException
+        // 扣分结果 (triggerRetraining, retrainingRecordId) 是 best-effort 回填,失败不应阻断后续闸机/通知流程.
+        // 重试 3 次 (退避 500ms) 应对短窗口内的并发写.
         try {
-            updateById(violation);
+            updateByIdWithRetry(violation, 3, 500);
         } catch (org.springframework.dao.OptimisticLockingFailureException oe) {
-            log.error("乐观锁冲突,扣分结果回填失败: violationId={}, personId={}",
+            log.error("乐观锁冲突,扣分结果回填失败(已重试 3 次): violationId={}, personId={}",
                     violation.getId(), personId, oe);
             // 不阻断后续流程,扣分和安全码计算已经完成
         }
@@ -327,6 +329,44 @@ public class ViolationRecordService extends ServiceImpl<ViolationRecordMapper, V
                 violation.getId(), personId, scoreResult.getColor(), scoreResult.getRetrainingRecordId());
 
         return result;
+    }
+
+    /**
+     * 乐观锁重试包装: 应对并发 updateById 短暂冲突 (典型场景: 同一违章行被扣分回填 + handlerId 回填并发)
+     * <p>
+     * 退避: 固定间隔 (生产可改 ThreadLocalRandom 抖动)
+     * 失败语义: 全部重试耗尽后最后一次异常向上抛
+     * </p>
+     */
+    private void updateByIdWithRetry(ViolationRecord entity, int maxAttempts, long backoffMs) {
+        org.springframework.dao.OptimisticLockingFailureException last = null;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                updateById(entity);
+                if (attempt > 1) {
+                    log.info("乐观锁重试成功: violationId={}, attempt={}", entity.getId(), attempt);
+                }
+                return;
+            } catch (org.springframework.dao.OptimisticLockingFailureException oe) {
+                last = oe;
+                if (attempt < maxAttempts) {
+                    try {
+                        Thread.sleep(backoffMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("重试被中断", ie);
+                    }
+                    // 重新查询以获取最新 @Version
+                    ViolationRecord fresh = getById(entity.getId());
+                    if (fresh != null) {
+                        fresh.setTriggerRetraining(entity.getTriggerRetraining());
+                        fresh.setRetrainingRecordId(entity.getRetrainingRecordId());
+                        entity = fresh;
+                    }
+                }
+            }
+        }
+        throw last;
     }
 
     /**

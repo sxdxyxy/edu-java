@@ -6,6 +6,7 @@ import com.joyfishs.dawa.person.service.PersonService;
 import com.joyfishs.dawa.person.entity.Person;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -42,8 +43,12 @@ public class SafetyPostDeductService {
     @Autowired
     private SafetyNotificationService notificationService;
 
-    /** 本地闸机回调地址（生产环境替换为实际闸机服务地址） */
-    private static final String GATE_CALLBACK_URL = "http://127.0.0.1:8000/access/gate/callback";
+    /**
+     * 闸机回调地址。由 application.yml 的 {@code safety.gate.callback-url} 注入。
+     * 不同环境(dev/staging/prod)使用各自的闸机地址,避免本机回环。
+     */
+    @Value("${safety.gate.callback-url:http://127.0.0.1:8000/access/gate/callback}")
+    private String gateCallbackUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -76,7 +81,7 @@ public class SafetyPostDeductService {
                     request.put("action", "notify");
 
                     ResponseEntity<?> resp = restTemplate.postForEntity(
-                            GATE_CALLBACK_URL, request, Object.class);
+                            gateCallbackUrl, request, Object.class);
 
                     log.info("闸机通知发送成功: personId={}, projectId={}, response={}",
                             personId, projectId, resp.getStatusCode());

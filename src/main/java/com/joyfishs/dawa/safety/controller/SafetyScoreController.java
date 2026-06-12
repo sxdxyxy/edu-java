@@ -14,6 +14,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -46,6 +47,7 @@ public class SafetyScoreController {
     private SafetyCodeService safetyCodeService;
 
     @GetMapping("/person/{personId}")
+    @PreAuthorize("@ss.hasPermi('safety:score:query')")
     @ApiOperation("获取人员安全积分信息")
     public AjaxResult<SafetyScoreAccount> getScoreByPersonId(@PathVariable Long personId) {
         SafetyScoreAccount account = safetyScoreAccountService.getByPersonId(personId);
@@ -57,6 +59,7 @@ public class SafetyScoreController {
     }
 
     @GetMapping("/person/{personId}/color")
+    @PreAuthorize("@ss.hasPermi('safety:score:query')")
     @ApiOperation("获取人员安全码颜色")
     public AjaxResult<String> getSafetyCodeColor(@PathVariable Long personId) {
         String color = safetyScoreService.getSafetyCodeColor(personId);
@@ -64,6 +67,7 @@ public class SafetyScoreController {
     }
 
     @GetMapping("/person/{personId}/current")
+    @PreAuthorize("@ss.hasPermi('safety:score:query')")
     @ApiOperation("获取人员当前积分")
     public AjaxResult<Integer> getCurrentScore(@PathVariable Long personId) {
         Integer score = safetyScoreService.getCurrentScore(personId);
@@ -71,6 +75,7 @@ public class SafetyScoreController {
     }
 
     @PostMapping("/deduct")
+    @PreAuthorize("@ss.hasPermi('safety:score:deduct')")
     @ApiOperation("违章扣分")
     public AjaxResult<ScoreChangeResult> deductScore(
             @RequestParam Long personId,
@@ -84,6 +89,7 @@ public class SafetyScoreController {
     }
 
     @PostMapping("/restore")
+    @PreAuthorize("@ss.hasPermi('safety:score:restore')")
     @ApiOperation("恢复积分")
     public AjaxResult<ScoreChangeResult> restoreScore(
             @RequestParam Long personId,
@@ -98,6 +104,7 @@ public class SafetyScoreController {
     }
 
     @PostMapping("/restore/retraining")
+    @PreAuthorize("@ss.hasPermi('safety:score:restore')")
     @ApiOperation("安全再培训完成后恢复积分")
     public AjaxResult<ScoreChangeResult> restoreAfterRetraining(
             @RequestParam Long personId,
@@ -111,6 +118,7 @@ public class SafetyScoreController {
     }
 
     @PostMapping("/account/create")
+    @PreAuthorize("@ss.hasPermi('safety:score:edit')")
     @ApiOperation("创建安全积分账户")
     public AjaxResult<SafetyScoreAccount> createAccount(
             @RequestParam Long personId,
@@ -122,6 +130,7 @@ public class SafetyScoreController {
     }
 
     @GetMapping("/list")
+    @PreAuthorize("@ss.hasPermi('safety:score:list')")
     @ApiOperation("获取安全积分账户列表")
     public AjaxResult<Map<String, Object>> list(
             @RequestParam(required = false, defaultValue = "1") Integer pageNum,
@@ -141,6 +150,7 @@ public class SafetyScoreController {
     }
 
     @GetMapping("/transaction/{personId}")
+    @PreAuthorize("@ss.hasPermi('safety:score:query')")
     @ApiOperation("获取人员积分变动记录")
     public AjaxResult<List<SafetyScoreTransaction>> getTransaction(@PathVariable Long personId) {
         List<SafetyScoreTransaction> transactions = scoreTransactionService.getByPersonId(personId);
@@ -148,20 +158,32 @@ public class SafetyScoreController {
     }
 
     @PostMapping("/refresh/all")
+    @PreAuthorize("@ss.hasPermi('safety:score:edit')")
     @ApiOperation("刷新所有安全码颜色")
     public AjaxResult<?> refreshAllColors() {
         log.info("手动触发刷新所有安全码颜色");
         // 获取所有账户并刷新颜色
         List<SafetyScoreAccount> accounts = safetyScoreAccountService.list();
-        int count = 0;
+        int updated = 0;
+        int failed = 0;
         for (SafetyScoreAccount account : accounts) {
             try {
-                String color = safetyScoreService.getSafetyCodeColor(account.getPersonId());
-                count++;
+                String newColor = safetyScoreService.getSafetyCodeColor(account.getPersonId());
+                if (newColor == null) {
+                    failed++;
+                    continue;
+                }
+                if (!newColor.equals(account.getColor())) {
+                    account.setColor(newColor);
+                    safetyScoreAccountService.updateById(account);
+                    updated++;
+                }
             } catch (Exception e) {
                 log.warn("刷新安全码颜色失败: personId={}", account.getPersonId(), e);
+                failed++;
             }
         }
-        return AjaxResult.success("已刷新 " + count + " 个账户的安全码颜色");
+        return AjaxResult.success(String.format("刷新完成: 更新 %d 条, 失败 %d 条, 总计 %d 条",
+                updated, failed, accounts.size()));
     }
 }

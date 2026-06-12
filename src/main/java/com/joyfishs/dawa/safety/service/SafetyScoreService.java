@@ -44,6 +44,10 @@ public class SafetyScoreService extends ServiceImpl<SafetyScoreAccountMapper, Sa
     @Autowired
     private SafetyScoreTransactionService transactionService;
 
+    @Autowired
+    @Lazy
+    private SafetyConfigService safetyConfigService;
+
     /**
      * 违章扣分并返回结果
      */
@@ -131,12 +135,16 @@ public class SafetyScoreService extends ServiceImpl<SafetyScoreAccountMapper, Sa
 
     /**
      * 安全再培训完成后恢复积分
+     * <p>
+     * 恢复分从 t_safety_config.score.retrain.restore 读 (D4 改造), 默认 4.
+     * </p>
      */
     @Transactional(rollbackFor = Exception.class)
     public ScoreChangeResult restoreAfterRetraining(Long personId, Long retrainingRecordId, Long operatorId) {
         log.info("安全再培训完成，恢复积分: personId={}, retrainingRecordId={}", personId, retrainingRecordId);
 
-        Integer restoreAmount = 4;
+        // 注入 SafetyConfigService (D4): 恢复分可配置
+        Integer restoreAmount = safetyConfigService.getInt("score.retrain.restore", 4);
 
         SafetyScoreAccount account = scoreAccountService.getByPersonId(personId);
         if (account == null) {

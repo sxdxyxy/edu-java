@@ -159,8 +159,8 @@ tencent:
 
 --- # sms 短信
 sms:
-  accessKeyId: ${SMS_ACCESS_KEY_ID}
-  accessKeySecret: ${SMS_ACCESS_KEY_SECRET}
+  accessKeyId: ${SMS_ACCESS_KEY_ID:dummy}
+  accessKeySecret: ${SMS_ACCESS_KEY_SECRET:dummy}
   signName: ${SMS_SIGN_NAME:子非鱼湖北信息科技}
   sdkAppId: ${SMS_SDK_APP_ID:1400823707}
 
@@ -199,3 +199,17 @@ wx:
         token: #微信小程序消息服务器配置的token
         aesKey: #微信小程序消息服务器配置的EncodingAESKey
         msgDataFormat: JSON
+
+# 智理安全闸机联动配置
+# dev/prod 通过 application-{profile}.yml 覆盖 callback-url
+safety:
+  gate:
+    callback-url: ${SAFETY_GATE_CALLBACK_URL:http://127.0.0.1:8000/access/gate/callback}
+  # D6: 二维码存储策略. local=dev-sts 写本地文件 + Spring 静态目录; oss=prod 走腾讯云 COS
+  # 详见 com.joyfishs.dawa.safety.qrcode.QrCodeStorage
+  qr:
+    storage: ${SAFETY_QR_STORAGE:local}
+    local:
+      base-path: ${SAFETY_QR_LOCAL_BASE_PATH:/tmp/qrcode}
+      # dev-sts 容器内 8091 -> host 8091, nginx 需把 /qrcode/* 转到后端 (或 Spring 静态资源)
+      url-prefix: ${SAFETY_QR_LOCAL_URL_PREFIX:http://127.0.0.1:8091/qrcode}

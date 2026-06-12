@@ -33,6 +33,10 @@ public class SafetyScoreAccountService extends ServiceImpl<SafetyScoreAccountMap
     @Lazy
     private WorkTypeMappingService workTypeMappingService;
 
+    @Autowired
+    @Lazy
+    private SafetyConfigService safetyConfigService;
+
     /**
      * 获取默认初始积分（从映射表读取，无映射则用旧配置）
      */
@@ -127,10 +131,20 @@ public class SafetyScoreAccountService extends ServiceImpl<SafetyScoreAccountMap
 
     /**
      * 根据积分和岗位类型判断颜色
+     * <p>
+     * 颜色阈值读 t_safety_config (D3 改造):
+     *   color.{workType}.green.threshold (>=此值 = 绿码, 即满分)
+     *   color.{workType}.yellow.threshold (>=此值 = 黄码)
+     *   < yellow.threshold = 红码
+     * 找不到配置时回退硬编码默认值.
+     * </p>
      */
     public String getColorByScore(String workType, int score) {
-        int greenThreshold = getGreenThreshold(workType);
-        int yellowThreshold = getYellowThreshold(workType);
+        String wt = workType == null ? WORK_TYPE_WORKER : workType;
+        int greenThreshold = safetyConfigService.getInt(
+                "color." + wt + ".green.threshold", fallbackGreen(wt));
+        int yellowThreshold = safetyConfigService.getInt(
+                "color." + wt + ".yellow.threshold", fallbackYellow(wt));
         if (score >= greenThreshold) {
             return "GREEN";
         } else if (score >= yellowThreshold) {
@@ -141,9 +155,22 @@ public class SafetyScoreAccountService extends ServiceImpl<SafetyScoreAccountMap
     }
 
     /**
-     * 获取绿码阈值
+     * 绿码阈值 (>= 此值 = 绿码)
      */
     public int getGreenThreshold(String workType) {
+        String wt = workType == null ? WORK_TYPE_WORKER : workType;
+        return safetyConfigService.getInt("color." + wt + ".green.threshold", fallbackGreen(wt));
+    }
+
+    /**
+     * 黄码阈值 (>= 此值 且 < 绿码 = 黄码)
+     */
+    public int getYellowThreshold(String workType) {
+        String wt = workType == null ? WORK_TYPE_WORKER : workType;
+        return safetyConfigService.getInt("color." + wt + ".yellow.threshold", fallbackYellow(wt));
+    }
+
+    private int fallbackGreen(String workType) {
         return switch (workType) {
             case WORK_TYPE_SPECIALIZED -> 12;
             case WORK_TYPE_SAFETY_ADMIN -> 10;
@@ -151,10 +178,7 @@ public class SafetyScoreAccountService extends ServiceImpl<SafetyScoreAccountMap
         };
     }
 
-    /**
-     * 获取黄码阈值
-     */
-    public int getYellowThreshold(String workType) {
+    private int fallbackYellow(String workType) {
         return switch (workType) {
             case WORK_TYPE_SPECIALIZED -> 6;
             case WORK_TYPE_SAFETY_ADMIN -> 5;

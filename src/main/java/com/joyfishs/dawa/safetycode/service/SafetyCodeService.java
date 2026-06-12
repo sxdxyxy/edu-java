@@ -15,6 +15,7 @@ import com.joyfishs.dawa.project.entity.Project;
 import com.joyfishs.dawa.project.mapper.ProjectMapper;
 import com.joyfishs.dawa.person.entity.Person;
 import com.joyfishs.dawa.person.service.PersonService;
+import com.joyfishs.dawa.safety.qrcode.QrCodeStorage;
 import com.joyfishs.dawa.safetycode.entity.SafetyCode;
 import com.joyfishs.dawa.safetycode.mapper.SafetyCodeMapper;
 import com.joyfishs.system.entity.SysUser;
@@ -46,16 +47,20 @@ public class SafetyCodeService extends ServiceImpl<SafetyCodeMapper, SafetyCode>
     private final SysUserMapper sysUserMapper;
     private final ProjectMapper projectMapper;
     private final PersonService personService;
+    // D6: 二维码存储抽象 (dev-sts 走 Local, prod 走 OSS)
+    private final QrCodeStorage qrCodeStorage;
 
     public SafetyCodeService(
             SafetyCodeEvaluator safetyCodeEvaluator,
             SysUserMapper sysUserMapper,
             ProjectMapper projectMapper,
-            PersonService personService) {
+            PersonService personService,
+            QrCodeStorage qrCodeStorage) {
         this.safetyCodeEvaluator = safetyCodeEvaluator;
         this.sysUserMapper = sysUserMapper;
         this.projectMapper = projectMapper;
         this.personService = personService;
+        this.qrCodeStorage = qrCodeStorage;
     }
 
 
@@ -129,15 +134,15 @@ public class SafetyCodeService extends ServiceImpl<SafetyCodeMapper, SafetyCode>
         safetyCode.setValidFrom(now);
         safetyCode.setValidTo(now.plusDays(DEFAULT_VALID_DAYS));
 
-        // 生成二维码数据 (使用安全码值作为二维码内容)
-        try {
-            cn.hutool.extra.qrcode.QrConfig config = new cn.hutool.extra.qrcode.QrConfig(200, 200);
-            String base64QrCode = cn.hutool.extra.qrcode.QrCodeUtil.generateAsBase64(codeValue, config, "png");
-            safetyCode.setQrCodeData("data:image/png;base64," + base64QrCode);
-            // 同时设置 qrCode 字段用于前端展示
-            safetyCode.setQrCode("data:image/png;base64," + base64QrCode);
-        } catch (Exception e) {
-            log.warn("Failed to generate QR code for userId: {}", userId, e);
+        // 生成二维码 (D6 改造): 不再 base64 内联, 改存 URL.
+        // dev-sts 走 LocalQrCodeStorage (/tmp/qrcode/safety-code/{date}/{id}.png)
+        // prod 走 OssQrCodeStorage (腾讯云 COS qrcode 目录)
+        // 容错: storeAndGetUrl 内部 try-catch, 失败返回 null, 主流程不阻塞
+        String qrUrl = qrCodeStorage.storeAndGetUrl(codeValue, 200, 200, "safety-code");
+        if (StringUtils.isNotEmpty(qrUrl)) {
+            safetyCode.setQrCodeData(qrUrl);
+            // qrCode 扩展字段也存 URL, 前端 <img :src="row.qrCode"> 直接渲染
+            safetyCode.setQrCode(qrUrl);
         }
 
         // 保存并返回

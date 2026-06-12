@@ -11,6 +11,7 @@ import com.joyfishs.dawa.person.service.PersonService;
 import com.joyfishs.dawa.project.entity.ProjectTerminalTrain;
 import com.joyfishs.dawa.project.entity.ProjectTerminalTrainSign;
 import com.joyfishs.dawa.project.mapper.ProjectTerminalTrainMapper;
+import com.joyfishs.dawa.safety.qrcode.QrCodeStorage;
 import com.joyfishs.utils.SecurityUtil;
 import com.joyfishs.utils.StringUtils;
 import com.joyfishs.utils.exception.CustomException;
@@ -30,6 +31,11 @@ public class FocusedTrainingService extends ServiceImpl<ProjectTerminalTrainMapp
     private PersonService personService;
     @Autowired
     private ProjectTerminalTrainSignService projectTerminalTrainSignService;
+    // D6: 二维码存储抽象 (dev-sts 走 Local, prod 走 OSS).
+    // 出口处对每个 ProjectTerminalTrain 调 storeAndGetUrl, 把 URL 塞到 signCodeQrCode 扩展字段.
+    // 前端 <img :src="row.signCodeQrCode"> 不需改, base64/URL 都能渲染.
+    @Autowired
+    private QrCodeStorage qrCodeStorage;
 
     /**
      * 通过用户的ID获取 集中培训
@@ -43,6 +49,8 @@ public class FocusedTrainingService extends ServiceImpl<ProjectTerminalTrainMapp
         List<ProjectTerminalTrain> terminalTrainList = baseMapper.findByOrgId(person.getId());
         log.info("XmFocusedTrainingService - findByPerson terminalTrainList:{}",terminalTrainList);
 
+        // D6: 出口处给每个培训补 signCodeQrCode (URL 而非 base64)
+        fillSignCodeQrCode(terminalTrainList);
         return terminalTrainList;
     }
 
@@ -70,8 +78,33 @@ public class FocusedTrainingService extends ServiceImpl<ProjectTerminalTrainMapp
         log.info("XmFocusedTrainingService - findTrainDetail sign:{}",sign);
         if (sign == null) projectTerminalTrain.setEnrollStatus(2);
 
+        // D6: 详情页要展示签到码二维码
+        fillSignCodeQrCode(projectTerminalTrain);
 
         return projectTerminalTrain;
+    }
+
+    /**
+     * 批量为培训列表补 signCodeQrCode (URL), signCode 为空则跳过
+     */
+    private void fillSignCodeQrCode(List<ProjectTerminalTrain> list) {
+        if (list == null || list.isEmpty()) return;
+        for (ProjectTerminalTrain t : list) {
+            fillSignCodeQrCode(t);
+        }
+    }
+
+    private void fillSignCodeQrCode(ProjectTerminalTrain t) {
+        if (t == null || StringUtils.isEmpty(t.getSignCode())) return;
+        try {
+            String url = qrCodeStorage.storeAndGetUrl(t.getSignCode(), 400, 400, "terminal-train");
+            if (StringUtils.isNotEmpty(url)) {
+                // signCodeQrCode 是 @TableField(exist=false) 扩展字段, 直接 set 不进 DB
+                t.setSignCodeQrCode(url);
+            }
+        } catch (Exception e) {
+            log.warn("fillSignCodeQrCode failed for train id={}", t.getId(), e);
+        }
     }
 
 }

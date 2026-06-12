@@ -8,11 +8,8 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.joyfishs.system.entity.BaseEntity;
-import com.joyfishs.utils.StringUtils;
 
-import cn.hutool.core.codec.Base64;
 import cn.hutool.core.date.DatePattern;
-import cn.hutool.extra.qrcode.QrCodeUtil;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -81,13 +78,13 @@ public class ProjectTerminalTrain extends BaseEntity {
     @TableField(exist = false)
     private Integer enrollStatus;
 
-    @ApiModelProperty("签到码二维码Base64")
+    @ApiModelProperty("签到码二维码URL (D6 改造: 从 base64 改为 QrCodeStorage 返回的 URL, 由 FocusedTrainingService 出口处填充)")
     @TableField(exist = false)
     private String signCodeQrCode;
 
-    public String getSignCodeQrCode() {
-        return StringUtils.isEmpty(this.signCode) ? "" :
-                String.format("data:image/png;base64,%s", Base64.encode(QrCodeUtil.generatePng(this.signCode, 400, 400)));
-    }
-
+    /**
+     * D6 改造: 删掉原 getter (每次返回重生成 base64).
+     * 当前由 FocusedTrainingService.fillSignCodeQrCode 在出口处 set 该字段.
+     * Jackson 默认走 field (因为我们没显式写 getter), 直接序列化.
+     */
 }
