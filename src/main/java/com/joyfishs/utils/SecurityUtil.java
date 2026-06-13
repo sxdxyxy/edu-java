@@ -5,10 +5,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.joyfishs.system.entity.LoginUser;
+import com.joyfishs.system.entity.SysRole;
 import com.joyfishs.system.entity.vo.PersonVo;
 import com.joyfishs.utils.exception.CustomException;
 
 import cn.hutool.core.util.ObjUtil;
+
+import java.util.List;
 
 /**
  * 安全服务工具类
@@ -132,6 +135,16 @@ public class SecurityUtil {
                 return null;
             }
 
+            // D23-1: 公司管理员 (sys_role.code='company_manager') 限定本机构
+            //   与 isAdmin() 互斥 — admin 走 ALL, company_manager 走本机构
+            if (isCompanyManager()) {
+                java.util.List<Long> orgIds = new java.util.ArrayList<>();
+                if (vo.getOrgId() != null) {
+                    orgIds.add(vo.getOrgId());
+                }
+                return orgIds;
+            }
+
             // 如果是单位管理员，返回其管理的机构 ID 列表
             if (vo.getIsAdmin() == 1) {
                 // 这里可以扩展为查询该管理员管理的所有机构
@@ -168,5 +181,36 @@ public class SecurityUtil {
     public static boolean matchesPassword(String rawPassword, String encodedPassword) {
         org.springframework.security.crypto.password.PasswordEncoder passwordEncoder = SpringUtil.getBean(org.springframework.security.crypto.password.PasswordEncoder.class);
         return passwordEncoder.matches(rawPassword, encodedPassword);
+    }
+
+    /**
+     * D23-1: 判断当前用户是否为「公司管理员」(sys_role.code='company_manager')
+     * 与 isAdmin() 互斥 — admin 走 ALL, company_manager 走本机构
+     * 失败时返回 false (fallback 到无限制), 不抛异常 — 调用方在 getManagedOrgIds 数据过滤路径上
+     * 宁可宽松过滤也别 500; 角色识别失败就当普通用户处理.
+     */
+    public static boolean isCompanyManager() {
+        try {
+            LoginUser loginUser = getLoginUser();
+            if (loginUser == null || loginUser.getUser() == null) {
+                return false;
+            }
+            // 优先看 currentRoleCode (单角色登录态), 回退到 roleList.code 多角色态
+            String currentCode = loginUser.getCurrentRoleCode();
+            if (currentCode != null && "company_manager".equals(currentCode)) {
+                return true;
+            }
+            List<SysRole> roles = loginUser.getRoleList();
+            if (roles != null) {
+                for (SysRole r : roles) {
+                    if (r != null && "company_manager".equals(r.getCode())) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }
