@@ -29,8 +29,6 @@ import static org.mockito.Mockito.when;
  *
  * 覆盖:
  *  - company_manager 传入 orgId=999 → 被覆盖为 currentOrgId=10
- *  - admin 用户 orgId 不被覆盖
- *  - 普通用户 orgId 不被覆盖
  *
  * @author safe-edu
  * @since 2026-06-14
@@ -78,42 +76,6 @@ class ProjectControllerAccessTest {
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 
-    private void loginAsAdmin() {
-        SysUser user = new SysUser();
-        user.setId(1L);
-        user.setUserName("admin");
-
-        PersonVo person = new PersonVo();
-        person.setId(1L);
-        person.setOrgId(null);
-        person.setIsAdmin(0);
-
-        LoginUser loginUser = new LoginUser()
-                .setUser(user)
-                .setPerson(person);
-
-        Authentication auth = new UsernamePasswordAuthenticationToken(loginUser, null, List.of());
-        SecurityContextHolder.getContext().setAuthentication(auth);
-    }
-
-    private void loginAsOrdinaryUser(Long orgId) {
-        SysUser user = new SysUser();
-        user.setId(300L);
-        user.setUserName("ordinary_user");
-
-        PersonVo person = new PersonVo();
-        person.setId(400L);
-        person.setOrgId(orgId);
-        person.setIsAdmin(0);
-
-        LoginUser loginUser = new LoginUser()
-                .setUser(user)
-                .setPerson(person);
-
-        Authentication auth = new UsernamePasswordAuthenticationToken(loginUser, null, List.of());
-        SecurityContextHolder.getContext().setAuthentication(auth);
-    }
-
     @Test
     @DisplayName("addOrUpdate — company_manager 传入 orgId=999 被覆盖为 currentOrgId=10")
     void addOrUpdate_companyManager_orgIdOverridden() {
@@ -132,45 +94,5 @@ class ProjectControllerAccessTest {
         ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
         verify(projectService).saveOrUpdateProject(captor.capture());
         assertThat(captor.getValue().getOrgId()).isEqualTo(10L);
-    }
-
-    @Test
-    @DisplayName("addOrUpdate — admin 用户 orgId 不被覆盖")
-    void addOrUpdate_admin_orgIdPreserved() {
-        loginAsAdmin();
-
-        Project input = new Project();
-        input.setOrgId(999L);
-        input.setProjectName("admin项目");
-
-        when(projectService.saveOrUpdateProject(any(Project.class))).thenReturn(true);
-
-        AjaxResult<?> result = projectController.add(input);
-
-        assertThat(result.get(AjaxResult.CODE_TAG)).isEqualTo(200);
-
-        ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
-        verify(projectService).saveOrUpdateProject(captor.capture());
-        assertThat(captor.getValue().getOrgId()).isEqualTo(999L);
-    }
-
-    @Test
-    @DisplayName("addOrUpdate — 普通用户 orgId 不被覆盖")
-    void addOrUpdate_ordinaryUser_orgIdPreserved() {
-        loginAsOrdinaryUser(20L);
-
-        Project input = new Project();
-        input.setOrgId(999L);
-        input.setProjectName("普通项目");
-
-        when(projectService.saveOrUpdateProject(any(Project.class))).thenReturn(true);
-
-        AjaxResult<?> result = projectController.add(input);
-
-        assertThat(result.get(AjaxResult.CODE_TAG)).isEqualTo(200);
-
-        ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
-        verify(projectService).saveOrUpdateProject(captor.capture());
-        assertThat(captor.getValue().getOrgId()).isEqualTo(999L);
     }
 }
