@@ -13,6 +13,7 @@ import com.joyfishs.dawa.project.entity.Project;
 import com.joyfishs.dawa.project.service.ProjectService;
 import com.joyfishs.system.controller.BaseController;
 import com.joyfishs.utils.AjaxResult;
+import com.joyfishs.utils.SecurityUtil;
 import com.joyfishs.utils.StringUtils;
 import com.joyfishs.utils.page.TableDataInfo;
 
@@ -37,6 +38,11 @@ public class ProjectController extends BaseController {
 	@PreAuthorize("@ss.hasPermi('project:edit')")
 	@ApiOperation(value = "新增项目")
 	public AjaxResult<?> add(@RequestBody @Validated Project project) {
+		// D23-2: company_manager 创建项目时强制 orgId = currentOrgId
+		// 防止 company_manager 通过伪造 POST body 给别人公司建项目
+		if (SecurityUtil.isCompanyManager()) {
+			project.setOrgId(SecurityUtil.getOrgId());
+		}
 		return AjaxResult.success(projectService.saveOrUpdateProject(project));
 	}
 
