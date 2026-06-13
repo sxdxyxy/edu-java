@@ -1,5 +1,7 @@
 package com.joyfishs.utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +19,8 @@ import java.util.List;
  * 安全服务工具类
  **/
 public class SecurityUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityUtil.class);
 
     /**
      * 获取Authentication
@@ -197,19 +201,20 @@ public class SecurityUtil {
             }
             // 优先看 currentRoleCode (单角色登录态), 回退到 roleList.code 多角色态
             String currentCode = loginUser.getCurrentRoleCode();
-            if (currentCode != null && "company_manager".equals(currentCode)) {
+            if (currentCode != null && SysRole.COMPANY_MANAGER_CODE.equals(currentCode)) {
                 return true;
             }
             List<SysRole> roles = loginUser.getRoleList();
             if (roles != null) {
                 for (SysRole r : roles) {
-                    if (r != null && "company_manager".equals(r.getCode())) {
+                    if (r != null && SysRole.COMPANY_MANAGER_CODE.equals(r.getCode())) {
                         return true;
                     }
                 }
             }
             return false;
         } catch (Exception e) {
+            log.warn("isCompanyManager failed, falling back to false", e);
             return false;
         }
     }
