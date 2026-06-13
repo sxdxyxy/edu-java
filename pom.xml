@@ -406,17 +406,6 @@
             </resource>
         </resources>
     </build>
-
-    <!-- 发布仓库 -->
-    <distributionManagement>
-        <repository>
-            <!-- 须与 settings.xml 中 server 的 id 一致 -->
-            <id>cmnt2-joyfishs/safe-edu/safe-edu</id>
-            <name>cmnt2-joyfishs/safe-edu/safe-edu</name>
-            <url>https://maven.cnb.cool/cmnt2/joyfishs/safe-edu/safe-edu/-/packages/</url>
-        </repository>
-    </distributionManagement>
-
     <!-- 达梦数据库：需要手动下载 DmJdbcDriver18-8.1.2.2.jar 到 lib/ 目录 -->
 
 </project>

@@ -4,11 +4,6 @@
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
 
     <servers>
-        <server>
-            <id>cmnt2-joyfishs/safe-edu/safe-edu</id>
-            <username>cnb</username>
-            <password>${CNB_TOKEN}</password>
-        </server>
     </servers>
 
     <profiles>
@@ -24,19 +19,6 @@
                     </releases>
                     <snapshots>
                         <enabled>false</enabled>
-                    </snapshots>
-                </repository>
-                <!--    这里会使用 server 中配置的账号密码-->
-                <!--    必须与 server 的 id 一致-->
-                <repository>
-                    <id>cmnt2-joyfishs/safe-edu/safe-edu</id>
-                    <name>safe-edu</name>
-                    <url>https://maven.cnb.cool/cmnt2/joyfishs/safe-edu/safe-edu/-/packages/</url>
-                    <releases>
-                        <enabled>true</enabled>
-                    </releases>
-                    <snapshots>
-                        <enabled>true</enabled>
                     </snapshots>
                 </repository>
             </repositories>
