@@ -58,19 +58,30 @@ public class SafetyScoreAccount implements Serializable {
     private String status;
 
     @ApiModelProperty("创建时间")
+    @TableField("created_at")
     private Date createdAt;
 
     @ApiModelProperty("更新时间")
+    @TableField("updated_at")
     private Date updatedAt;
 
+    @TableField("create_by")
     private Long createBy;
+    @TableField("create_time")
     private Date createTime;
+    @TableField("update_by")
     private Long updateBy;
+    @TableField("update_time")
     private Date updateTime;
+    @TableField("is_delete")
     private Integer isDelete;
+    @TableField("delete_by")
     private Long deleteBy;
+    @TableField("delete_time")
     private Date deleteTime;
+    @TableField("delete_reason")
     private String deleteReason;
+    @TableField("remark")
     private String remark;
 
     @TableField(exist = false)
