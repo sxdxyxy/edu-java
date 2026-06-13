@@ -7,6 +7,7 @@ import com.joyfishs.system.entity.SysRole;
 import com.joyfishs.system.entity.SysUser;
 import com.joyfishs.system.entity.vo.PersonVo;
 import com.joyfishs.utils.AjaxResult;
+import com.joyfishs.utils.exception.CustomException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -94,5 +96,80 @@ class ProjectControllerAccessTest {
         ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
         verify(projectService).saveOrUpdateProject(captor.capture());
         assertThat(captor.getValue().getOrgId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("get — company_manager 访问别公司项目 (orgId=999) 抛 403")
+    void get_companyManager_crossCompany_throws403() {
+        loginAsCompanyManager(10L);
+
+        Project p = new Project();
+        p.setId(1L);
+        p.setOrgId(999L);
+        when(projectService.get(1L)).thenReturn(p);
+
+        assertThatThrownBy(() -> projectController.get(1L))
+            .isInstanceOf(CustomException.class)
+            .extracting("code").isEqualTo(403);
+    }
+
+    @Test
+    @DisplayName("get — company_manager 访问本公司项目正常")
+    void get_companyManager_ownCompany_succeeds() {
+        loginAsCompanyManager(10L);
+
+        Project p = new Project();
+        p.setId(1L);
+        p.setOrgId(10L);
+        when(projectService.get(1L)).thenReturn(p);
+
+        AjaxResult<?> result = projectController.get(1L);
+
+        assertThat(result.get(AjaxResult.CODE_TAG)).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("del — company_manager 删别公司项目 → 403")
+    void del_companyManager_crossCompany_throws403() {
+        loginAsCompanyManager(10L);
+
+        Project p = new Project();
+        p.setId(1L);
+        p.setOrgId(999L);
+        when(projectService.get(1L)).thenReturn(p);
+
+        assertThatThrownBy(() -> projectController.del("1", "test reason"))
+            .isInstanceOf(CustomException.class)
+            .extracting("code").isEqualTo(403);
+    }
+
+    @Test
+    @DisplayName("release — company_manager 发布别公司项目 → 403")
+    void release_companyManager_crossCompany_throws403() {
+        loginAsCompanyManager(10L);
+
+        Project p = new Project();
+        p.setId(1L);
+        p.setOrgId(999L);
+        when(projectService.get(1L)).thenReturn(p);
+
+        assertThatThrownBy(() -> projectController.release(1L))
+            .isInstanceOf(CustomException.class)
+            .extracting("code").isEqualTo(403);
+    }
+
+    @Test
+    @DisplayName("stop — company_manager 中止别公司项目 → 403")
+    void stop_companyManager_crossCompany_throws403() {
+        loginAsCompanyManager(10L);
+
+        Project p = new Project();
+        p.setId(1L);
+        p.setOrgId(999L);
+        when(projectService.get(1L)).thenReturn(p);
+
+        assertThatThrownBy(() -> projectController.stop(1L))
+            .isInstanceOf(CustomException.class)
+            .extracting("code").isEqualTo(403);
     }
 }

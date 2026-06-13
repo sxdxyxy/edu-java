@@ -15,6 +15,7 @@ import com.joyfishs.system.controller.BaseController;
 import com.joyfishs.utils.AjaxResult;
 import com.joyfishs.utils.SecurityUtil;
 import com.joyfishs.utils.StringUtils;
+import com.joyfishs.utils.exception.CustomException;
 import com.joyfishs.utils.page.TableDataInfo;
 
 import io.swagger.annotations.Api;
@@ -54,6 +55,8 @@ public class ProjectController extends BaseController {
 			return AjaxResult.success();
 		}
 		List<Long> idList = Arrays.stream(id.split(",")).map(Long::parseLong).collect(Collectors.toList());
+		// D23-3: 逐个 id 越权检查
+		for (Long pid : idList) assertProjectAccess(pid);
 		return toAjax(projectService.del(idList, deleteReason));
 	}
 
@@ -77,6 +80,7 @@ public class ProjectController extends BaseController {
 	@PreAuthorize("@ss.hasPermi('project:list')")
 	@ApiOperation(value = "查询项目详情")
 	public AjaxResult<?> get(@RequestParam Long id) {
+		assertProjectAccess(id);
 		Project project = projectService.get(id);
 		return AjaxResult.success(project);
 	}
@@ -85,6 +89,7 @@ public class ProjectController extends BaseController {
 	@PreAuthorize("@ss.hasPermi('project:release')")
 	@ApiOperation(value = "项目发布")
 	public AjaxResult<?> release(@RequestParam Long id) {
+		assertProjectAccess(id);
 		log.info("SysRoleController - release id:{}", id);
 		return toAjax(projectService.release(id));
 	}
@@ -93,7 +98,21 @@ public class ProjectController extends BaseController {
 	@PreAuthorize("@ss.hasPermi('project:release')")
 	@ApiOperation(value = "中止项目")
 	public AjaxResult<?> stop(@RequestParam Long id) {
+		assertProjectAccess(id);
 		log.info("ProjectController - stop id:{}", id);
 		return toAjax(projectService.stop(id));
+	}
+
+	/**
+	 * D23-3: company_manager 越权检查 — 不允许操作非本公司项目
+	 * admin / platform_manager 跳过此检查
+	 */
+	private void assertProjectAccess(Long projectId) {
+		if (!SecurityUtil.isCompanyManager()) return;
+		Project p = projectService.get(projectId);
+		Long currentOrgId = SecurityUtil.getOrgId();
+		if (p == null || p.getOrgId() == null || !p.getOrgId().equals(currentOrgId)) {
+			throw new CustomException("无权操作其他公司数据", 403);
+		}
 	}
 }
