@@ -1,7 +1,12 @@
 -- V20260623: 回填 xm_project 表里 64 条 org_id IS NULL 的老项目
 -- 现象: dev-sts 上 xm_project 共有 149 条 (is_delete=0),其中 64 条 org_id IS NULL
 --   早期数据没有 org_id 字段,或者创建时没填,导致列表里看不到项目归属
--- 备份: /tmp/safe-edu-backups/xm_project_null_org_64_backup.sql (Mac 本地)
+-- 备份: /tmp/safe-edu-backups/xm_project_null_org_64_pre_run_dump.sql (Mac 本地,执行前 27 行)
+--
+-- 执行记录 (2026-06-15): 因 dev-sts 服务器 docker build 拉镜像一直 504 (4 个 mirror 全挂),
+--   用户决定"跳过 build, 直接在 db 上手跑 SQL"。以下 3 条 UPDATE 已在 dev-sts db 上执行,
+--   验证 still_null = 0, 分类数对齐 (77→15, 20→25, 1→86 + 其他 23 = 149)。
+--   本文件保留在 repo, 下次 build 部署时 WHERE org_id IS NULL 不会再匹配, 是 no-op。
 --
 -- 分类规则 (关键词 -> org_id):
 --   华夏水利 -> 77 (湖北华夏水利水电股份有限公司)
