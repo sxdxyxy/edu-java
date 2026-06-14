@@ -81,7 +81,8 @@ public class SafetyRetrainingService extends ServiceImpl<SafetyRetrainingRecordM
         }
         record.setStatus(SafetyRetrainingRecord.STATUS_PENDING);
         record.setOperatorId(operatorId);
-        record.setCreatedAt(new Date());
+        // V20260621 删除了 t_safety_retraining_record 的 created_at/updated_at 列,
+        // 创建时间改由 BaseEntity.create_time 字段统一维护 (DB DEFAULT CURRENT_TIMESTAMP).
 
         save(record);
 

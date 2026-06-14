@@ -138,15 +138,9 @@ public class SafetyRetrainingRecord extends BaseEntity {
     @ApiModelProperty("备注")
     private String remarks;
 
-    /**
-     * 创建时间
-     */
-    @ApiModelProperty("创建时间")
-    private Date createdAt;
-
-    /**
-     * 更新时间
-     */
-    @ApiModelProperty("更新时间")
-    private Date updatedAt;
+    // 注: 创建时间/更新时间由 BaseEntity.create_time/update_time 统一提供 (硬编码 @TableField).
+    //   V20260621 已 drop 掉本表的 created_at/updated_at 冗余列, 实体里
+    //   不能保留 createdAt/updatedAt 字段 — 否则 MyBatis-Plus 自动映射
+    //   会把 SELECT 列里加上不存在的 created_at → Unknown column 500.
+    //   之前因实体字段未同步导致 /safety/retraining/list 报"系统繁忙".
 }

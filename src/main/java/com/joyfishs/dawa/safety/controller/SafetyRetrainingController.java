@@ -49,7 +49,7 @@ public class SafetyRetrainingController {
             @ApiParam("每页数量") @RequestParam(defaultValue = "20") Integer pageSize) {
         com.baomidou.mybatisplus.core.metadata.IPage<SafetyRetrainingRecord> page = retrainingService.lambdaQuery()
                 .eq(status != null && !status.isEmpty(), SafetyRetrainingRecord::getStatus, status)
-                .orderByDesc(SafetyRetrainingRecord::getCreatedAt)
+                .orderByDesc(SafetyRetrainingRecord::getCreateTime)
                 .page(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(pageNum, pageSize));
 
         Map<String, Object> result = new HashMap<>();
@@ -64,7 +64,7 @@ public class SafetyRetrainingController {
     public AjaxResult<List<SafetyRetrainingRecord>> listByPerson(@PathVariable Long personId) {
         List<SafetyRetrainingRecord> records = retrainingService.lambdaQuery()
                 .eq(SafetyRetrainingRecord::getPersonId, personId)
-                .orderByDesc(SafetyRetrainingRecord::getCreatedAt)
+                .orderByDesc(SafetyRetrainingRecord::getCreateTime)
                 .list();
         return AjaxResult.success(records);
     }

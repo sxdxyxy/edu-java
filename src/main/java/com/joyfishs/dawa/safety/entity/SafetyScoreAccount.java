@@ -57,13 +57,10 @@ public class SafetyScoreAccount implements Serializable {
     @ApiModelProperty("状态")
     private String status;
 
-    @ApiModelProperty("创建时间")
-    @TableField("created_at")
-    private Date createdAt;
-
-    @ApiModelProperty("更新时间")
-    @TableField("updated_at")
-    private Date updatedAt;
+    // 注: 创建时间/更新时间由下方 create_time/update_time 字段 (V20260618 显式 @TableField 注入) 提供.
+    //   V20260621 已 drop 掉本表的 created_at/updated_at 冗余列, 实体里
+    //   不能保留带 @TableField("created_at"/"updated_at") 的字段 — 否则
+    //   MyBatis-Plus SELECT 列里会引用不存在的列 → Unknown column 500.
 
     @TableField("create_by")
     private Long createBy;

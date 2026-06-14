@@ -28,7 +28,7 @@ public interface SafetyScoreAccountMapper extends BaseMapper<SafetyScoreAccount>
     /**
      * 根据人员ID更新当前积分
      */
-    @Update("UPDATE t_safety_score_account SET current_score = #{score}, updated_at = NOW() WHERE person_id = #{personId}")
+    @Update("UPDATE t_safety_score_account SET current_score = #{score}, update_time = NOW() WHERE person_id = #{personId}")
     int updateScoreByPersonId(@Param("personId") Long personId, @Param("score") Integer score);
 
     /**
