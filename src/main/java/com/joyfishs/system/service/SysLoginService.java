@@ -118,6 +118,35 @@ public class SysLoginService {
     }
 
     /**
+     * 自动识别角色登录:优先以管理员身份登录,若该用户没有管理员角色,再回退到学员身份。
+     * 密码错或用户不存在时直接返回失败(两种身份都不通过);管理员身份被停用/无人员信息时回退到学员身份。
+     *
+     * @param loginBody 登录请求体
+     * @param isCheckState 是否校验账号状态
+     * @return 登录结果,LoginRes.roleCode 表示实际登录的角色(student / platform_manager)
+     */
+    public LoginRes autoLogin(UsernamePasswordLoginBody loginBody, boolean isCheckState) {
+        LoginRes managerRes = tryLoginWithRole(loginBody, RoleType.MANAGER, isCheckState);
+        if (managerRes.getCode() == 200) {
+            managerRes.setRoleCode(RoleType.MANAGER.getValue());
+            return managerRes;
+        }
+        // 仅在"该用户没有该角色"时回退到学员;其他错误(用户名/密码错、账号停用等)直接透传
+        if (!"登录用户没有该角色".equals(managerRes.getErrorMsg())) {
+            return managerRes;
+        }
+        LoginRes studentRes = tryLoginWithRole(loginBody, RoleType.STUDENT, isCheckState);
+        if (studentRes.getCode() == 200) {
+            studentRes.setRoleCode(RoleType.STUDENT.getValue());
+        }
+        return studentRes;
+    }
+
+    protected LoginRes tryLoginWithRole(UsernamePasswordLoginBody loginBody, RoleType roleType, boolean isCheckState) {
+        return login(loginBody, roleType, isCheckState);
+    }
+
+    /**
      * 登录验证
      *
      * @return 结果

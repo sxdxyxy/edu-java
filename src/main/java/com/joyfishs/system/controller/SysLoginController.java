@@ -56,6 +56,17 @@ public class SysLoginController {
         return R.ok(result);
     }
 
+    @ApiOperation(value = "自动识别登录:优先以管理员身份,无管理员角色时回退到学员身份")
+    @PostMapping("/autoLogin")
+    @Log(title = "自动识别登录系统", businessType = BusinessType.LOGIN)
+    public R<LoginRes> autoLogin(@Validated @RequestBody UsernamePasswordLoginBody loginBody) {
+        LoginRes result = sysLoginService.autoLogin(loginBody, true);
+        if (result.getCode() == 200) {
+            return R.ok(result);
+        }
+        return R.fail(result.getCode() == null ? 500 : result.getCode(), result.getErrorMsg());
+    }
+
     @ApiOperation(value = "学员手机验证码登录")
     @PostMapping("/studentCaptchaLogin")
     @Log(title = "学员手机验证码登录系统", businessType = BusinessType.LOGIN)

@@ -29,6 +29,8 @@ public class LoginRes implements Serializable {
     private String openid;
     @ApiModelProperty("unionid")
     private String unionid;
+    @ApiModelProperty("实际登录的角色编码(student / platform_manager),自动识别登录接口使用")
+    private String roleCode;
 
     public LoginRes() {
         this.code = 200;
