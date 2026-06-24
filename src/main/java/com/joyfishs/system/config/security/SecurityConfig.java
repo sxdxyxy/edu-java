@@ -111,6 +111,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 // 对于登录 login 允许匿名访问
                 .antMatchers("/login").anonymous()
                 .antMatchers("/studentLogin").anonymous()
+                .antMatchers("/autoLogin").anonymous()
                 .antMatchers("/studentCaptchaLogin").anonymous()
                 .antMatchers("/studentWeiXinWebLogin").anonymous()
                 .antMatchers("/faceLogin").anonymous()
